@@ -247,7 +247,7 @@ export const hi: Record<MessageKey, string> = {
   "apply.qualityTitle": "अपने-आप गुणवत्ता जाँच",
   "apply.qualityText": "अपलोड करते समय हर फ़ाइल में धुंधलापन, चमक, कटे किनारे और रिज़ॉल्यूशन जाँचा जाता है। अंतिम निर्णय अधिकारी लेता है।",
   "apply.qualityMock": "परीक्षण मोड: बैकएंड नकली दस्तावेज़ विश्लेषण से चल रहा है, इसलिए गुणवत्ता परिणाम पहले से तय हैं, आपकी फ़ाइल की असली जाँच नहीं। अंतिम निर्णय अधिकारी लेता है।",
-  "apply.fileHint": "PDF, JPG या PNG · अधिकतम 10 MiB",
+  "apply.fileHint": "PDF, JPG या PNG, अधिकतम 10 MiB",
   "apply.tooLarge": "{name} 10 MiB से बड़ी है।",
   "apply.badType": "{name} PDF, JPG या PNG फ़ाइल नहीं है।",
   "apply.statusLive": "{doc}: {status}",

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import {
   ArrowRight, Award, Bell, Calendar, Check, ChevronRight, CircleAlert, Clock, Download, FileText, GraduationCap, House,
-  Info, Lock, LogIn, LogOut, Mail, Menu, RefreshCw, Search, ShieldCheck, TriangleAlert, Upload, User, X, type LucideIcon,
+  Info, LoaderCircle, Lock, LogIn, LogOut, Mail, Menu, RefreshCw, Search, ShieldCheck, TriangleAlert, Upload, User, X, type LucideIcon,
 } from 'lucide-react';
 import { useI18n } from './i18n';
 import { errorRequestId, errorText } from './i18n/errors';
@@ -20,6 +20,7 @@ const ICONS = {
   download: Download,
   home: House,
   info: Info,
+  loader: LoaderCircle,
   lock: Lock,
   login: LogIn,
   logout: LogOut,

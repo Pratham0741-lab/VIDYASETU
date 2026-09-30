@@ -145,16 +145,24 @@
 .human-note p { margin-top: var(--sp-1); color: var(--c-muted); font-size: var(--fs-sm); }
 
 .upload-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-3); }
-.upload-row { max-width: none; padding: var(--sp-3) var(--sp-4); display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3); background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius); }
+.upload-row { max-width: none; padding: var(--sp-3) var(--sp-4); display: flex; align-items: center; gap: var(--sp-3); background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius); }
 .upload-row.has-issue { border-color: var(--c-amber); background: var(--c-warning-tint); }
-.upload-icon { width: 44px; height: 44px; display: grid; place-items: center; color: var(--c-on-navy); background: var(--c-primary); border-radius: 50%; }
+.upload-status { width: 24px; height: 24px; flex: none; display: grid; place-items: center; color: var(--c-primary); }
+.upload-row.is-verified .upload-status { color: var(--c-success); }
+.upload-row.is-needs_attention .upload-status { color: var(--c-warning-text); }
+.upload-row.is-scanning .upload-status .icon { animation: upload-spin 1s linear infinite; }
+@keyframes upload-spin { to { transform: rotate(360deg); } }
+.upload-copy { flex: 1; }
+.upload-action { flex: none; }
+.apply-main .hint { font-size: var(--fs-sm); }
 .upload-copy { display: grid; justify-items: start; gap: var(--sp-1); min-width: 0; }
 .upload-copy strong { line-height: 1.35; }
 .upload-file { color: var(--c-muted); font-size: var(--fs-sm); overflow-wrap: anywhere; }
 .upload-issue { display: flex; gap: var(--sp-2); color: var(--c-warning-text); font-size: var(--fs-sm); font-weight: 600; }
 .upload-issue .icon { margin-top: 1px; }
 @media (max-width: 599px) {
-  .upload-row { grid-template-columns: 44px minmax(0, 1fr); }
+  .upload-row { flex-wrap: wrap; }
+  .upload-action { flex: 1 1 100%; }
   .upload-action { grid-column: 1 / -1; }
   .upload-action .btn { width: 100%; }
 }

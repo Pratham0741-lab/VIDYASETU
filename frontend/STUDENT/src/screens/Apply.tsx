@@ -9,7 +9,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { useI18n, type MessageKey } from "../i18n";
 import { categoryLabel } from "../i18n/labels";
 import { RECORDED_FIELDS, useSchemeCatalogue, type SchemeEntry } from "../schemes";
-import { Button, Card, ErrorNote, Icon, InfoNote, ScreenTitle, Tag, type Tone } from "../ui";
+import { Button, Card, ErrorNote, Icon, InfoNote, ScreenTitle, Tag, type Tone, type IconName } from "../ui";
 
 const POLL_MS = 2000;
 const POLL_TRIES = 30;
@@ -107,15 +107,18 @@ function WizardSteps({ active }: { active: number }) {
   );
 }
 
-/** One checklist row: the round icon, one status, the reason when it needs attention, one file action. */
-function UploadRow({ title, file, issues, tag, action }: { title: string; file?: string; issues: string[]; tag: { tone: Tone; text: string }; action: ReactNode }) {
+const STATUS_ICON: Partial<Record<SlotOutcome, IconName>> = { SCANNING: "loader", VERIFIED: "check", NEEDS_ATTENTION: "warning" };
+
+/** One checklist row: title, and after an upload a status icon and pill (with the reason when it needs attention); one file action. */
+function UploadRow({ title, file, issues, outcome, tag, action }: { title: string; file?: string; issues: string[]; outcome: SlotOutcome; tag: { tone: Tone; text: string }; action: ReactNode }) {
+  const icon = STATUS_ICON[outcome];
   return (
-    <li className={`upload-row ${issues.length ? "has-issue" : ""}`}>
-      <span className="upload-icon"><Icon name={file ? "document" : "upload"} /></span>
+    <li className={`upload-row is-${outcome.toLowerCase()} ${issues.length ? "has-issue" : ""}`}>
+      {icon && <span className="upload-status" aria-hidden="true"><Icon name={icon} /></span>}
       <div className="upload-copy">
         <strong>{title}</strong>
         {file && <span className="upload-file num">{file}</span>}
-        <Tag tone={tag.tone}>{tag.text}</Tag>
+        {outcome !== "MISSING" && <Tag tone={tag.tone}>{tag.text}</Tag>}
         {issues.map((issue) => <p className="upload-issue" key={issue}><Icon name="warning" />{issue}</p>)}
       </div>
       <div className="upload-action">{action}</div>
@@ -488,6 +491,7 @@ function DocumentsStep({ applicationId, stage, gate }: { applicationId: string; 
               title={tk(`slot.${slot}`, slot)}
               file={view ? `${view.file_name} · ${sizeText(view.file_size_bytes)}` : undefined}
               issues={shown === "NEEDS_ATTENTION" ? reasons.map(reasonText) : []}
+              outcome={shown}
               tag={{ tone: OUTCOME_TONE[shown], text: t(`doc.outcome.${shown}`) }}
               action={
                 <>

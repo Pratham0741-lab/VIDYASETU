@@ -252,7 +252,7 @@ export const en = {
   "apply.qualityTitle": "Automatic quality check",
   "apply.qualityText": "Each file is checked for blur, glare, cut-off edges and resolution when you upload it. A human officer makes the final decision.",
   "apply.qualityMock": "Test mode: the backend runs with mock document analysis, so quality results are fixtures, not a real check of your file. A human officer makes the final decision.",
-  "apply.fileHint": "PDF, JPG or PNG · up to 10 MiB",
+  "apply.fileHint": "PDF, JPG or PNG, up to 10 MiB",
   "apply.tooLarge": "{name} is larger than 10 MiB.",
   "apply.badType": "{name} is not a PDF, JPG or PNG file.",
   "apply.statusLive": "{doc}: {status}",
