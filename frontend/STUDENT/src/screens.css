@@ -81,34 +81,6 @@
 .three-cards .card { padding: 22px; }
 .three-cards h3 { margin: 8px 0 3px; font-size: var(--fs-title); }
 .three-cards p { margin: 0; color: var(--c-muted); font-size: var(--fs-sm); }
-.deadline { display: flex; align-items: center; gap: 10px; padding: 11px 14px; color: var(--c-error-text); background: var(--c-error-tint); border-radius: 7px; }
-.deadline small, .deadline strong { display: block; }
-.deadline small { font-size: var(--fs-sm); letter-spacing: .1em; }
-.deadline strong { font-size: var(--fs-sm); }
-.deficiency-list { display: grid; gap: 16px; }
-.deficiency-card { padding: 22px; display: grid; grid-template-columns: 42px 1fr 220px 245px; gap: 18px; align-items: center; }
-.issue-num { color: var(--c-border-strong); font-size: var(--fs-section); font-weight: 700; }
-.issue-copy h2 { margin: 8px 0 5px; font-size: var(--fs-title-lg); }
-.issue-copy > p { color: var(--c-muted); font-size: var(--fs-sm); }
-.officer-note { padding: 10px; background: var(--c-page); border-left: 3px solid var(--c-primary); }
-.officer-note strong { font-size: var(--fs-sm); }
-.officer-note p { margin: 2px 0 0; color: var(--c-muted); font-size: var(--fs-sm); }
-.crop-preview { text-align: center; }
-.document-mock { height: 137px; padding: 14px; border: 5px solid var(--c-border); background: #fffdf5; overflow: hidden; position: relative; box-shadow: var(--shadow-card); }
-.document-mock > span { font-family: var(--font-body); font-size: var(--fs-sm); }
-.document-mock i { display: block; width: 90%; height: 3px; margin: 11px auto; background: var(--c-border-strong); }
-.document-mock b { padding: 4px; display: block; color: var(--c-error-text); border: 2px solid var(--c-error-text); font-family: var(--font-body); font-size: var(--fs-sm); }
-.crop-preview small { color: var(--c-muted); font-size: var(--fs-sm); }
-.fix-upload { min-height: 135px; padding: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border: 1px dashed var(--c-border-strong); border-radius: 7px; background: var(--c-subtle); }
-.fix-upload > .icon { color: var(--c-primary); }
-.fix-upload strong { margin-top: 5px; font-size: var(--fs-sm); }
-.fix-upload span { color: var(--c-muted); font-size: var(--fs-sm); }
-.fix-upload .btn { min-height: 31px; margin-top: 8px; padding: 5px 10px; font-size: var(--fs-sm); }
-.deficiency-card.compact { grid-template-columns: 42px 1fr 245px; }
-.sticky-submit { margin-top: 22px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 8px; box-shadow: var(--shadow-card); }
-.sticky-submit strong, .sticky-submit span { display: block; }
-.sticky-submit strong { font-size: var(--fs-sm); }
-.sticky-submit span { color: var(--c-muted); font-size: var(--fs-sm); }
 .merit-hero { padding: 27px 32px; display: grid; grid-template-columns: 200px 1fr 150px; gap: 28px; align-items: center; color: var(--c-surface); background: linear-gradient(115deg, #0d513d, #087a57); border-radius: 10px; }
 .rank { border-right: 1px solid rgba(255,255,255,.25); }
 .rank small, .rank strong, .rank span { display: block; }
@@ -196,8 +168,6 @@
 .detail-group { margin-bottom: 20px; }
 .detail-group h3 { margin: 0; font-size: var(--fs-body); }
 .detail-group > p { margin: 2px 0 10px; color: var(--c-muted); font-size: var(--fs-sm); }
-.crop-image { display: block; max-width: 100%; max-height: 100%; margin: auto; }
-.other-upload { margin-top: 16px; }
 .objection-text { width: 100%; margin-top: 7px; padding: 10px 13px; color: var(--c-navy); background: var(--c-subtle); border: 1px solid var(--c-border-strong); border-radius: 6px; font: inherit; resize: vertical; }
 .vidya-hero { height: 317px; color: var(--c-surface); /* Local gradient replaces the remote Unsplash photo (offline build). */ background-image: radial-gradient(circle at 78% 30%, #2f6f96 0%, rgba(47,111,150,0) 55%), linear-gradient(120deg, #0c1735 0%, #16325a 55%, #1d5a7e 100%); background-position: center 44%; background-size: cover; position: relative; overflow: hidden; }
 .vidya-overlay { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(12,23,53,.94) 0%, rgba(20,30,56,.82) 45%, rgba(10,34,55,.45) 100%); }
@@ -267,8 +237,6 @@
 .vidya-metrics small { color: #6f6228; font-size: var(--fs-sm); }
 @media (max-width: 950px) {
   .checker-grid, .content-sidebar, .verification-grid, .merit-grid, .award-grid, .lower-grid { grid-template-columns: 1fr; }
-  .deficiency-card, .deficiency-card.compact { grid-template-columns: 40px 1fr; }
-  .crop-preview, .fix-upload { grid-column: 2; }
   .three-cards { grid-template-columns: 1fr; }
   .timeline { overflow-x: auto; grid-template-columns: repeat(5, 170px); }
   .vidya-checker-grid { grid-template-columns: 1fr; }
@@ -277,7 +245,7 @@
 }
 @media (max-width: 650px) {
   .wizard { grid-template-columns: 1fr 1fr; }
-  .status-hero, .sticky-submit { align-items: flex-start; flex-direction: column; }
+  .status-hero { align-items: flex-start; flex-direction: column; }
   .merit-hero { grid-template-columns: 1fr; }
   .rank { border: 0; }
   .score-total { text-align: left; }
@@ -290,4 +258,40 @@
   .scheme-table .scheme-header { display: none; }
   .vidya-metrics { grid-template-columns: 1fr; }
   .vidya-metrics > div { border-right: 0; border-bottom: 1px solid rgba(87,82,31,.3); }
+}
+
+/* ------------------------------------------------ Deficiencies (UI v2, resolve.png) */
+.deadline-box { padding: var(--sp-3) var(--sp-5); display: grid; gap: var(--sp-1); color: var(--c-error-text); background: var(--c-surface); border: 2px solid var(--c-error); border-radius: var(--radius); }
+.deadline-box span { font-size: var(--fs-sm); font-weight: 700; }
+.deadline-box strong { font-family: var(--font-heading); font-size: var(--fs-title-lg); font-weight: 800; }
+.countdown { align-items: center; }
+.countdown strong { font-family: var(--font-heading); font-size: var(--fs-title-lg); font-weight: 800; }
+.countdown p { color: var(--c-error-text); font-size: var(--fs-body); }
+.def-list { display: grid; gap: var(--sp-4); }
+.def-item { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: var(--sp-2) var(--sp-4); align-items: start; }
+.def-item.has-crop { grid-template-columns: 48px minmax(0, 1fr) minmax(160px, 240px); }
+.def-icon { width: 48px; height: 48px; display: grid; place-items: center; color: var(--c-primary); background: var(--c-primary-tint); border-radius: var(--radius-sm); }
+.def-item.accent-green .def-icon { color: var(--c-success); background: var(--c-success-tint); }
+.def-copy { display: grid; gap: var(--sp-2); min-width: 0; }
+.def-copy h2 { font-size: var(--fs-title-lg); }
+.def-copy p { color: var(--c-muted); }
+.def-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); color: var(--c-muted); font-size: var(--fs-sm); font-weight: 600; }
+.def-copy .kv { margin-top: var(--sp-1); }
+.crop-preview { margin: 0; display: grid; gap: var(--sp-1); }
+.crop-frame { min-height: 120px; padding: var(--sp-2); display: grid; place-items: center; background: var(--c-subtle); border: 1px solid var(--c-border); border-radius: var(--radius-sm); }
+.crop-image { display: block; max-width: 100%; max-height: 220px; margin: auto; }
+.crop-preview figcaption { color: var(--c-muted); font-size: var(--fs-sm); }
+.def-actions { grid-column: 2 / -1; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end; gap: var(--sp-3); }
+.def-actions .hint { margin: 0 auto var(--sp-3) 0; }
+.def-actions .slot-picker { flex: 1 1 240px; max-width: 360px; margin: 0; }
+.def-submit { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-4); }
+.def-submit strong, .def-submit span { display: block; }
+.def-submit span { color: var(--c-muted); font-size: var(--fs-sm); }
+@media (max-width: 767px) {
+  .def-item, .def-item.has-crop { grid-template-columns: 40px minmax(0, 1fr); }
+  .def-icon { width: 40px; height: 40px; }
+  .def-item .crop-preview, .def-actions { grid-column: 1 / -1; }
+  .def-actions { justify-content: stretch; }
+  .def-actions .btn, .def-submit .btn { width: 100%; }
+  .deadline-box { width: 100%; }
 }

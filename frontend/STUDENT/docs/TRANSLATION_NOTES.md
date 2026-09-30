@@ -124,3 +124,11 @@ without a key is shown humanised (underscores to spaces, sentence case), e.g.
 | `nav.stepDone` | (completed) | (पूरा हुआ) |
 | `header.notifications` | Notifications | सूचनाएँ |
 | `header.notificationsUnread` | Notifications: {n} unread | सूचनाएँ: {n} अपठित |
+| `def.respondBy` (UI v2) | Target date | लक्ष्य तिथि |
+| `def.overdue` (UI v2) | The target date has passed | लक्ष्य तिथि निकल चुकी है |
+| `def.deadlineText` (UI v2) | Please respond by the deadline. | कृपया समय सीमा तक जवाब दें। |
+| `def.itemDeadline` (UI v2) | Target date | लक्ष्य तिथि |
+| `def.progressHint` (UI v2) | You can submit once at least one correction is uploaded. | कम से कम एक सुधार अपलोड होने पर आप जमा कर सकते हैं। |
+| `def.dueToday` | Due today | आज अंतिम दिन |
+| `def.uploadedLive` | {doc}: replacement uploaded | {doc}: नया दस्तावेज़ अपलोड हो गया |
+| `def.uploadingLive` | {doc}: uploading… | {doc}: अपलोड हो रहा है… |

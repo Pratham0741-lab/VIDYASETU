@@ -9,7 +9,7 @@ import { Button, Card, ErrorNote, Icon, InfoNote, ScreenTitle, Tag, type Tone } 
 const MAX_BYTES = 10 * 1024 * 1024;
 const ACCEPTED = ["application/pdf", "image/jpeg", "image/png"];
 const DAY_MS = 24 * 60 * 60 * 1000;
-const ITEM_TONE: Record<string, Tone> = { OPEN: "red", OVERDUE: "red", RESUBMITTED: "amber", RESOLVED: "green" };
+const ITEM_TONE: Record<string, Tone> = { OPEN: "red", OVERDUE: "red", RESUBMITTED: "blue", RESOLVED: "green" };
 
 /** The marked region of the document (PNG), fetched with the bearer token; shown only when the backend has one. */
 function CropPreview({ applicationId, item }: { applicationId: string; item: DeficiencyItem }) {
@@ -32,10 +32,10 @@ function CropPreview({ applicationId, item }: { applicationId: string; item: Def
   }, [applicationId, item.id, item.crop_ref]);
   if (!item.crop_ref) return null;
   return (
-    <div className="crop-preview">
-      <div className="document-mock">{url ? <img src={url} alt={t("def.cropAlt")} className="crop-image" /> : <span>{failed ? t("def.cropFailed") : t("common.loading")}</span>}</div>
-      <small>{t("def.cropCaption")}</small>
-    </div>
+    <figure className="crop-preview">
+      <div className="crop-frame">{url ? <img src={url} alt={t("def.cropAlt")} className="crop-image" /> : <span className="muted">{failed ? t("def.cropFailed") : t("common.loading")}</span>}</div>
+      <figcaption>{t("def.cropCaption")}</figcaption>
+    </figure>
   );
 }
 
@@ -53,6 +53,7 @@ export default function DeficiencyScreen() {
   const [resubmitted, setResubmitted] = useState<string | null>(null);
   const [otherSlot, setOtherSlot] = useState("");
   const [slotFor, setSlotFor] = useState<Record<string, string>>({});
+  const [live, setLive] = useState("");
   const inputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const load = useCallback(async () => {
@@ -79,13 +80,17 @@ export default function DeficiencyScreen() {
     if (file.size > MAX_BYTES) return setLocalError(t("apply.tooLarge", { name: file.name }));
     if (!ACCEPTED.includes(file.type)) return setLocalError(t("apply.badType", { name: file.name }));
     setBusy(key);
+    const doc = tk(`slot.${slot}`, slot);
+    setLive(t("def.uploadingLive", { doc }));
     try {
       const res = await ep.uploadDocument(selected.id, slot, file);
+      setLive(res.status === "QUALITY_REJECTED" ? "" : t("def.uploadedLive", { doc }));
       if (res.status === "QUALITY_REJECTED") {
         setLocalError(t("apply.retake", { issues: res.quality.issues.map((x) => tk(`quality.${x}`, x.replace(/_/g, " "))).join(", ") || t("quality.unknown") }));
       }
       await load();
     } catch (e) {
+      setLive("");
       // e.g. 409 slot_not_in_open_deficiency for a document that no open item names.
       setError(e);
     } finally {
@@ -126,70 +131,83 @@ export default function DeficiencyScreen() {
     }
   };
 
-  const fileButton = (key: string, slot: string, label: string, variant: "primary" | "secondary" = "secondary") => (
+  const fileButton = (key: string, slot: string, label: string) => (
     <>
       <input ref={(el) => { inputs.current[key] = el; }} type="file" hidden accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" onChange={(e) => upload(key, slot, e.target.files?.[0])} />
-      <Button variant={variant} disabled={busy !== null || !slot} onClick={() => inputs.current[key]?.click()}>{busy === key ? t("apply.uploading") : label}</Button>
+      <Button variant="blue" icon="upload" disabled={busy !== null || !slot} onClick={() => inputs.current[key]?.click()}>{busy === key ? t("apply.uploading") : label}</Button>
     </>
   );
+  const slotPicker = (value: string, onChange: (v: string) => void, id: string) => (
+    <label className="slot-picker" htmlFor={id}>{t("def.chooseDocument")}
+      <select id={id} value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">{t("def.chooseDocument")}</option>
+        {checklist.map((s) => <option key={s} value={s}>{tk(`slot.${s}`, s)}</option>)}
+      </select>
+    </label>
+  );
+  const countdown = daysLeft === null ? "" : daysLeft < 0 ? t("def.overdue") : daysLeft === 0 ? t("def.dueToday") : t("def.daysLeft", { n: daysLeft });
 
   return (
-    <main className="app-page">
+    <main className="app-page def-page">
       <ScreenTitle
         eyebrow={t("def.eyebrow")}
-        title={items.length ? t("def.title", { n: pending.length }) : t("def.titleNone")}
+        title={items.length ? t("def.title", { n: items.length }) : t("def.titleNone")}
         description={t("def.description")}
-        action={deadline ? <div className="deadline"><Icon name="clock" /><div><small>{t("def.respondBy")}</small><strong>{formatDate(deadline, true)}</strong></div></div> : undefined}
+        action={deadline ? <div className={`deadline-box ${daysLeft !== null && daysLeft < 0 ? "is-overdue" : ""}`}><span>{t("def.respondBy")}</span><strong><time dateTime={deadline}>{formatDate(deadline, true)}</time></strong></div> : undefined}
       />
       <ApplicationPicker apps={apps} selected={selected} onSelect={select} />
       <ErrorNote error={appsError || error} />
       {localError && <div className="alert-danger" role="alert"><Icon name="warning" /><div><strong>{localError}</strong></div></div>}
+      <p className="sr-only" aria-live="polite">{live}</p>
       {resubmitted && <InfoNote icon="check" title={t("def.resubmittedTitle")} text={t("def.resubmittedText", { stage: tk(`stage.${resubmitted}`, resubmitted) })} />}
       {result && !result.resubmitted && <InfoNote icon="warning" title={t("def.notClearedTitle")} text={t("def.notClearedText")} />}
       {!list && !error && selected && <p>{t("common.loading")}</p>}
       {apps && !selected && <InfoNote title={t("dash.noAppTitle")} text={t("dash.noAppText")} />}
 
-      {daysLeft !== null && pending.length > 0 && (
-        <div className="alert-danger"><Icon name="warning" /><div><strong>{daysLeft >= 0 ? t("def.daysLeft", { n: daysLeft }) : t("def.overdue")}</strong><p>{t("def.deadlineText")}</p></div></div>
+      {countdown && pending.length > 0 && (
+        <div className="alert-danger countdown"><Icon name="warning" size={24} /><div><strong className="num">{countdown}</strong><p>{t("def.deadlineText")}</p></div></div>
       )}
 
       {list && !defective && !openDef && !resubmitted && <InfoNote icon="check" title={t("def.nothingTitle")} text={t("def.nothingText", { stage: tk(`stage.${list.current_stage}`, list.current_stage) })} />}
 
       {list && defective && !openDef && (
-        <Card className="deficiency-card compact">
-          <div className="issue-num">01</div>
-          <div className="issue-copy"><Tag tone="red">{t("stage.DEFECTIVE")}</Tag><h2>{t("def.gateTitle")}</h2><p>{t("def.gateText")}</p></div>
-          <div className="fix-upload"><Icon name="refresh" /><strong>{t("def.gateAction")}</strong><Button variant="secondary" onClick={() => navigate(`/dashboard?app=${encodeURIComponent(selected!.id)}`)}>{t("def.seeNotice")}</Button></div>
+        <Card className="def-item">
+          <span className="def-icon"><Icon name="refresh" size={24} /></span>
+          <div className="def-copy"><Tag tone="red">{t("stage.DEFECTIVE")}</Tag><h2>{t("def.gateTitle")}</h2><p>{t("def.gateText")}</p></div>
+          <div className="def-actions"><Button variant="secondary" onClick={() => navigate(`/dashboard?app=${encodeURIComponent(selected!.id)}#notifications`)}>{t("def.seeNotice")}</Button></div>
         </Card>
       )}
 
       {items.length > 0 && selected && (
-        <div className="deficiency-list">
-          {items.map((item, index) => {
+        <div className="def-list">
+          {items.map((item) => {
             const slot = item.document_slot ?? slotFor[item.id] ?? "";
             const done = item.status === "RESUBMITTED" || item.status === "RESOLVED";
             return (
-              <Card className={`deficiency-card ${item.crop_ref ? "" : "compact"}`} key={item.id}>
-                <div className="issue-num">{String(index + 1).padStart(2, "0")}</div>
-                <div className="issue-copy">
-                  <Tag tone={ITEM_TONE[item.status] ?? "amber"}>{item.document_slot ? tk(`slot.${item.document_slot}`, item.document_slot) : t("def.allDocuments")} · {tk(`def.status.${item.status}`, item.status)}</Tag>
+              <Card className={`def-item ${item.crop_ref ? "has-crop" : ""} ${done ? "accent-green" : ""}`} key={item.id}>
+                <span className="def-icon"><Icon name={done ? "check" : "document"} size={24} /></span>
+                <div className="def-copy">
+                  <div className="def-meta">
+                    <Tag tone={ITEM_TONE[item.status] ?? "amber"}>{tk(`def.status.${item.status}`, item.status)}</Tag>
+                    <span>{item.document_slot ? tk(`slot.${item.document_slot}`, item.document_slot) : t("def.allDocuments")}</span>
+                  </div>
                   <h2>{item.problem_code ? tk(item.problem_code, item.problem_code) : t("def.problemUnknown")}</h2>
-                  <p>{item.fix_code ? tk(item.fix_code, item.fix_code) : ""}</p>
-                  {item.deadline_at && <div className="officer-note"><strong>{t("def.itemDeadline")}</strong><p>{formatDate(item.deadline_at, true)}{item.source ? ` · ${tk(`def.source.${item.source}`, item.source)}` : ""}</p></div>}
+                  {item.fix_code && <p>{tk(item.fix_code, item.fix_code)}</p>}
+                  {item.deadline_at && (
+                    <dl className="kv">
+                      <dt>{t("def.itemDeadline")}</dt>
+                      <dd><time dateTime={item.deadline_at}>{formatDate(item.deadline_at, true)}</time>{item.source ? <span className="muted"> · {tk(`def.source.${item.source}`, item.source)}</span> : null}</dd>
+                    </dl>
+                  )}
                 </div>
                 <CropPreview applicationId={selected.id} item={item} />
-                <div className="fix-upload">
-                  <Icon name={done ? "check" : "upload"} />
-                  <strong>{done ? t("def.uploadedFix") : t("def.dropHere")}</strong>
-                  <span>{t("apply.fileHint")}</span>
-                  {!item.document_slot && (
-                    <select value={slotFor[item.id] ?? ""} onChange={(e) => setSlotFor((m) => ({ ...m, [item.id]: e.target.value }))}>
-                      <option value="">{t("def.chooseDocument")}</option>
-                      {checklist.map((s) => <option key={s} value={s}>{tk(`slot.${s}`, s)}</option>)}
-                    </select>
-                  )}
-                  {item.status !== "RESOLVED" && defective && fileButton(item.id, slot, done ? t("apply.replace") : t("apply.chooseFile"))}
-                </div>
+                {item.status !== "RESOLVED" && defective && (
+                  <div className="def-actions">
+                    {!item.document_slot && slotPicker(slotFor[item.id] ?? "", (v) => setSlotFor((m) => ({ ...m, [item.id]: v })), `slot-${item.id}`)}
+                    <span className="hint">{t("apply.fileHint")}</span>
+                    {fileButton(item.id, slot, done ? t("apply.replace") : t("apply.chooseFile"))}
+                  </div>
+                )}
               </Card>
             );
           })}
@@ -197,26 +215,23 @@ export default function DeficiencyScreen() {
       )}
 
       {list && defective && checklist.length > 0 && (
-        <Card className="deficiency-card compact other-upload">
-          <div className="issue-num"><Icon name="document" /></div>
-          <div className="issue-copy"><h2>{t("def.otherTitle")}</h2><p>{t("def.otherText")}</p></div>
-          <div className="fix-upload">
-            <select value={otherSlot} onChange={(e) => setOtherSlot(e.target.value)}>
-              <option value="">{t("def.chooseDocument")}</option>
-              {checklist.map((s) => <option key={s} value={s}>{tk(`slot.${s}`, s)}</option>)}
-            </select>
+        <Card className="def-item accent-none">
+          <span className="def-icon"><Icon name="document" size={24} /></span>
+          <div className="def-copy"><h2>{t("def.otherTitle")}</h2><p>{t("def.otherText")}</p></div>
+          <div className="def-actions">
+            {slotPicker(otherSlot, setOtherSlot, "slot-other")}
             {fileButton("other", otherSlot, t("apply.chooseFile"))}
           </div>
         </Card>
       )}
 
       {list && defective && (
-        <div className="sticky-submit">
+        <div className="def-submit">
           <div>
-            <strong>{openDef ? t("def.progress", { n: uploaded, m: items.length }) : t("def.progressGate")}</strong>
+            <strong className="num">{openDef ? t("def.progress", { n: uploaded, m: items.length }) : t("def.progressGate")}</strong>
             <span>{openDef ? t("def.progressHint") : t("def.progressGateHint")}</span>
           </div>
-          <Button disabled={busy !== null || (openDef !== null && pending.length > 0)} onClick={resubmit}>{busy === "resubmit" ? t("common.pleaseWait") : t("def.resubmit")}</Button>
+          <Button disabled={busy !== null || (openDef !== null && uploaded === 0)} onClick={resubmit}>{busy === "resubmit" ? t("common.pleaseWait") : t("def.resubmit")}</Button>
         </div>
       )}
     </main>

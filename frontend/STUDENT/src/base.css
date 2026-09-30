@@ -68,6 +68,7 @@ img { max-width: 100%; }
 
 .step-nav { padding-top: var(--sp-4); }
 .step-nav ol { list-style: none; margin-block: 0; display: flex; }
+.step-nav li a { position: relative; }
 .step-nav ol::before { content: none; }
 .step-nav li { flex: 1 1 0; min-width: max-content; max-width: none; }
 .step-nav a { min-height: 56px; height: 100%; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); padding: 0 var(--sp-4); color: var(--c-on-navy-muted); background: var(--c-navy); border-bottom: 4px solid transparent; font-size: var(--fs-sm); font-weight: 600; text-decoration: none; white-space: nowrap; }
@@ -80,7 +81,8 @@ img { max-width: 100%; }
 .step-nav a.done .step-num { color: var(--c-on-navy); background: var(--c-success-step); border-radius: 50%; }
 .step-nav a.done .icon { width: 16px; height: 16px; }
 @media (max-width: 767px) {
-  .step-nav ol { overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: thin; padding-inline: 0; margin-inline: var(--gutter); width: auto; border-radius: var(--radius); background: var(--c-navy); }
+  .step-nav ol { position: relative; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; padding-inline: 0; margin-inline: var(--gutter); width: auto; border-radius: var(--radius); background: var(--c-navy); mask-image: linear-gradient(to right, transparent, black var(--sp-5), black calc(100% - var(--sp-5)), transparent); }
+  .step-nav ol::-webkit-scrollbar { display: none; }
   .step-nav li { flex: 0 0 auto; scroll-snap-align: center; }
   .step-nav li a { border-radius: 0 !important; }
 }

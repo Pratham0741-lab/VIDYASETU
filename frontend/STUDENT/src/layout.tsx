@@ -141,8 +141,16 @@ function StepNav() {
   const app = useNewestApplication(status === "signed-in", pathname);
   const current = useRef<HTMLAnchorElement | null>(null);
   useEffect(() => {
-    // Below 768px the bar scrolls sideways; keep the current step in view.
-    current.current?.scrollIntoView({ block: "nearest", inline: "center" });
+    // Below 768px the bar scrolls sideways; keep the current step centred in it
+    // (scrolls only the bar, never the page).
+    const centre = () => {
+      const a = current.current;
+      const bar = a?.closest("ol");
+      if (a && bar) bar.scrollLeft = a.offsetLeft - (bar.clientWidth - a.offsetWidth) / 2;
+    };
+    centre();
+    window.addEventListener("resize", centre);
+    return () => window.removeEventListener("resize", centre);
   }, [pathname]);
   const done = (step: string) => (step === "eligibility" ? !!app : step === "apply" ? !!app?.submitted_at : false);
   return (
