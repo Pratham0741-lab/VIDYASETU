@@ -145,3 +145,7 @@ without a key is shown humanised (underscores to spaces, sentence case), e.g.
 | `result.howText` (UI v2) | Exactly as the backend recorded it for your application. | ठीक वैसा ही जैसा बैकएंड ने आपके आवेदन के लिए दर्ज किया है। |
 | `result.congratsNoName` | Congratulations | बधाई हो |
 | `result.outOf` | {value} of {max} | {max} में से {value} |
+| `apply.fileHint` / `apply.tip4` / `apply.tooLarge` (UI v2: MiB, the real limit) | PDF, JPG or PNG · up to 10 MiB | PDF, JPG या PNG · अधिकतम 10 MiB |
+| `apply.stepN` (UI v2, sentence case) | Step {n} | (unchanged) |
+| `apply.statusLive` | {doc}: {status} | {doc}: {status} |
+| `apply.stepCurrent` / `apply.stepDone` | (current step) / (completed) | (मौजूदा चरण) / (पूरा हुआ) |

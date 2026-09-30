@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError } from "../api/client";
 import * as ep from "../api/endpoints";
@@ -11,8 +11,6 @@ import { categoryLabel } from "../i18n/labels";
 import { RECORDED_FIELDS, useSchemeCatalogue, type SchemeEntry } from "../schemes";
 import { Button, Card, ErrorNote, Icon, InfoNote, ScreenTitle, Tag, type Tone } from "../ui";
 
-const MAX_BYTES = 10 * 1024 * 1024;
-const ACCEPTED = ["application/pdf", "image/jpeg", "image/png"];
 const POLL_MS = 2000;
 const POLL_TRIES = 30;
 
@@ -93,18 +91,35 @@ function toDto(form: AppForm, scheme: SchemeEntry | undefined): CreateApplicatio
 function WizardSteps({ active }: { active: number }) {
   const { t } = useI18n();
   const steps: MessageKey[] = ["apply.step.profile", "apply.step.form", "apply.step.submit", "apply.step.documents"];
-  return <div className="wizard">{steps.map((step, index) => <div className={index < active ? "done" : index === active ? "active" : ""} key={step}><span>{index < active ? <Icon name="check" /> : index + 1}</span><div><small>{t("apply.stepN", { n: index + 1 })}</small><strong>{t(step)}</strong></div></div>)}</div>;
+  return (
+    <ol className="wizard">
+      {steps.map((step, index) => {
+        const state = index < active ? "done" : index === active ? "active" : "";
+        return (
+          <li className={state} key={step} aria-current={index === active ? "step" : undefined}>
+            <span className="wizard-mark" aria-hidden="true">{index < active ? <Icon name="check" size={24} /> : index + 1}</span>
+            <span className="wizard-text"><small>{t("apply.stepN", { n: index + 1 })}</small><strong>{t(step)}</strong></span>
+            {state && <span className="sr-only">{t(state === "done" ? "apply.stepDone" : "apply.stepCurrent")}</span>}
+          </li>
+        );
+      })}
+    </ol>
+  );
 }
 
 function UploadRow({ title, file, issue, tag, action }: { title: string; file?: string; issue?: string; tag?: { tone: Tone; text: string }; action: ReactNode }) {
   const { t } = useI18n();
   return (
-    <div className={`upload-row ${issue ? "has-issue" : ""}`}>
+    <li className={`upload-row ${issue ? "has-issue" : ""}`}>
       <span className="upload-icon"><Icon name={file ? "document" : "upload"} /></span>
-      <div><strong>{title}</strong><p>{file || t("apply.fileHint")}</p>{issue && <small><Icon name="warning" />{issue}</small>}</div>
-      {tag && <Tag tone={tag.tone}>{tag.text}</Tag>}
-      {action}
-    </div>
+      <div className="upload-copy">
+        <strong>{title}</strong>
+        <span className="upload-file num">{file || t("apply.fileHint")}</span>
+        {tag && <Tag tone={tag.tone}>{tag.text}</Tag>}
+        {issue && <p className="upload-issue"><Icon name="warning" />{issue}</p>}
+      </div>
+      <div className="upload-action">{action}</div>
+    </li>
   );
 }
 
@@ -114,7 +129,7 @@ function sizeText(bytes: number) {
 
 export default function ApplicationScreen() {
   const i18n = useI18n();
-  const { t, tk, formatDate, formatNumber } = i18n;
+  const { t, tk, formatDate, formatAmount } = i18n;
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const { profile } = useAuth();
@@ -225,34 +240,35 @@ export default function ApplicationScreen() {
     return <main className="app-page"><ErrorNote error={appsError} /><p>{t("common.loading")}</p></main>;
   }
 
-  const stepAction = <Tag tone="blue">{t("apply.stepOf", { n: step + 1 })}</Tag>;
+  const stepAction = <span className="pill num">{t("apply.stepOf", { n: step + 1 })}</span>;
   const eyebrow = step === 3 && selected ? t("apply.eyebrowApp", { no: selected.application_no }) : scheme ? t("apply.eyebrowScheme", { code: scheme.code }) : t("apply.eyebrow");
 
   return (
     <main className="app-page">
       <ScreenTitle eyebrow={eyebrow} title={t(step === 3 ? "apply.titleDocs" : "apply.title")} description={t(step === 3 ? "apply.descriptionDocs" : "apply.description")} action={stepAction} />
       <WizardSteps active={step} />
-      <div className="content-sidebar">
-        <Card>
+      <div className="split apply-grid">
+        <Card className="apply-main">
           <ErrorNote error={error || schemesError} />
 
           {step === 0 && (
             <>
               <div className="card-heading"><div><h2>{t("apply.profileTitle")}</h2><p>{t("apply.profileText")}</p></div></div>
               {profile && (
-                <div className="check-table">
+                <dl className="kv profile-kv">
                   {([
                     ["field.firstName", `${profile.first_name} ${profile.last_name}`],
                     ["field.category", profile.category ? categoryLabel(i18n, profile.category) : t("common.notStated")],
                     ["field.gender", profile.gender ? tk(`gender.${profile.gender}`, profile.gender) : t("common.notStated")],
                     ["field.dob", profile.dob ? formatDate(profile.dob) : t("common.notStated")],
                     ["field.domicileState", [profile.domicile_state, profile.domicile_district].filter(Boolean).join(", ") || t("common.notStated")],
-                    ["field.annualIncome", profile.annual_income ? `₹${formatNumber(Number(profile.annual_income))}` : t("common.notStated")],
+                    ["field.annualIncome", profile.annual_income && Number.isFinite(Number(profile.annual_income)) ? formatAmount(Number(profile.annual_income)) : t("common.notStated")],
                   ] as Array<[MessageKey, string]>).map(([label, value]) => (
-                    <div className="check-row" key={label}><span className="rule-check"><Icon name="check" /></span><div><small>{t(label)}</small><strong>{value}</strong></div><div><Tag tone="gray">{t("apply.recorded")}</Tag></div></div>
+                    <Fragment key={label}><dt>{t(label)}</dt><dd className="num">{value}</dd></Fragment>
                   ))}
-                </div>
+                </dl>
               )}
+              {profile && <Tag tone="gray">{t("apply.recorded")}</Tag>}
               <div className="human-note"><Icon name="user" /><div><strong>{t("apply.profileNoteTitle")}</strong><p>{t("apply.profileNoteText")}</p></div></div>
               <div className="form-actions"><Button onClick={() => setStep(1)}>{t("apply.continue")} <Icon name="arrow" /></Button></div>
             </>
@@ -269,15 +285,15 @@ export default function ApplicationScreen() {
                   {(schemes ?? []).map((s) => <option key={s.versionId} value={s.versionId}>{s.name} ({s.code} v{s.version})</option>)}
                 </select>
               </label>
-              <div className="type-control-row">
+              <div className="field-row">
                 <label>{t("apply.academicYear")}<input value={form.academic_year} onChange={(e) => setField("academic_year", e.target.value)} placeholder="2026-27" /></label>
                 <label>{t("apply.courseYear")}<span>{t("common.optional")}</span><input type="number" min={1} max={10} value={form.course_year} onChange={(e) => setField("course_year", e.target.value)} /></label>
               </div>
-              <div className="type-control-row">
+              <div className="field-row">
                 <label>{t("apply.institutionName")}<span>{t("common.optional")}</span><input value={form.institution_name} onChange={(e) => setField("institution_name", e.target.value)} /></label>
                 <label>{t("apply.institutionCode")}<span>{t("common.optional")}</span><input value={form.institution_code} onChange={(e) => setField("institution_code", e.target.value)} /></label>
               </div>
-              <div className="type-control-row">
+              <div className="field-row">
                 <label>{t("apply.courseName")}<span>{t("common.optional")}</span><input value={form.course_name} onChange={(e) => setField("course_name", e.target.value)} /></label>
                 <label>{t("apply.hosteller")}<span>{t("common.optional")}</span>
                   <select value={form.is_hosteller} onChange={(e) => setField("is_hosteller", e.target.value as AppForm["is_hosteller"])}>
@@ -315,13 +331,15 @@ export default function ApplicationScreen() {
           {step === 2 && (
             <>
               <div className="card-heading"><div><h2>{t("apply.reviewTitle")}</h2><p>{t("apply.reviewText")}</p></div></div>
-              <div className="check-table">
-                <div className="check-row"><span className="rule-check"><Icon name="document" /></span><div><small>{t("apply.scheme")}</small><strong>{scheme ? `${scheme.name} (${scheme.code} v${scheme.version})` : form.schemeVersionId}</strong></div><div><Tag>{form.academic_year}</Tag></div></div>
-                <div className="check-row"><span className="rule-check"><Icon name="home" /></span><div><small>{t("apply.institutionName")}</small><strong>{[form.institution_name, form.institution_code, form.course_name].filter(Boolean).join(" · ") || t("common.notStated")}</strong></div><div><small>{form.course_year ? t("apply.courseYearN", { n: form.course_year }) : ""}</small></div></div>
+              <dl className="kv review-kv">
+                <dt>{t("apply.scheme")}</dt><dd>{scheme ? `${scheme.name} (${scheme.code} v${scheme.version})` : form.schemeVersionId}</dd>
+                <dt>{t("apply.academicYear")}</dt><dd className="num">{form.academic_year}</dd>
+                <dt>{t("apply.institutionName")}</dt><dd>{[form.institution_name, form.institution_code, form.course_name].filter(Boolean).join(" · ") || t("common.notStated")}</dd>
+                {form.course_year && <><dt>{t("apply.courseYear")}</dt><dd className="num">{t("apply.courseYearN", { n: form.course_year })}</dd></>}
                 {declarableFields(scheme).filter((f) => form.declared[f.key]).map((f) => (
-                  <div className="check-row" key={f.key}><span className="rule-check"><Icon name="check" /></span><div><small>{tk(`formField.${f.key}`, f.key.replace(/_/g, " "))}</small><strong>{form.declared[f.key]}</strong></div><div><Tag tone="gray">{t("apply.declared")}</Tag></div></div>
+                  <Fragment key={f.key}><dt>{tk(`formField.${f.key}`, f.key.replace(/_/g, " "))}</dt><dd>{form.declared[f.key]} <Tag tone="gray">{t("apply.declared")}</Tag></dd></Fragment>
                 ))}
-              </div>
+              </dl>
               {missingConsent && missingConsent.length > 0 && (
                 <div className="alert-danger"><Icon name="warning" /><div><strong>{t("apply.consentMissing")}</strong><p>{t("api.consent.required", { purposes: missingConsent.join(", ") })}</p></div></div>
               )}
@@ -337,9 +355,9 @@ export default function ApplicationScreen() {
           {step === 3 && selected && <DocumentsStep applicationId={selected.id} stage={selected.current_stage} gate={gate} />}
           {step === 3 && !selected && apps && <p>{t("apply.noApplication")}</p>}
         </Card>
-        <aside>
-          <Card className="tip-card"><Icon name="document" /><h3>{t("apply.tipTitle")}</h3><ul><li>{t("apply.tip1")}</li><li>{t("apply.tip2")}</li><li>{t("apply.tip3")}</li><li>{t("apply.tip4")}</li></ul></Card>
-          <Card className="help-card"><h3>{t("apply.helpTitle")}</h3><p>{t("apply.helpText")}</p>{step === 3 && <Button variant="secondary" onClick={() => navigate("/apply?new=1")}>{t("apply.startAnother")}</Button>}</Card>
+        <aside className="stack">
+          <Card className="tip-card"><h3>{t("apply.tipTitle")}</h3><ul className="tick-list">{(["apply.tip1", "apply.tip2", "apply.tip3", "apply.tip4"] as const).map((k) => <li key={k}><Icon name="check" />{t(k)}</li>)}</ul></Card>
+          <Card className="help-card accent-none"><h3>{t("apply.helpTitle")}</h3><p>{t("apply.helpText")}</p>{step === 3 && <Button variant="secondary" onClick={() => navigate("/apply?new=1")}>{t("apply.startAnother")}</Button>}</Card>
         </aside>
       </div>
     </main>
@@ -366,7 +384,7 @@ function DocumentsStep({ applicationId, stage, gate }: { applicationId: string; 
   const [retake, setRetake] = useState<Record<string, string[]>>({});
   const [uploading, setUploading] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
-  const [localError, setLocalError] = useState<string | null>(null);
+  const [status, setStatus] = useState("");
   const inputs = useRef<Record<string, HTMLInputElement | null>>({});
   const closed = stage === "REJECTED" || stage === "DISBURSED";
 
@@ -387,7 +405,10 @@ function DocumentsStep({ applicationId, stage, gate }: { applicationId: string; 
       try {
         const d = await ep.getDocument(documentId);
         setLive((m) => ({ ...m, [documentId]: d }));
-        if (d.state !== "PROCESSING") break;
+        if (d.state !== "PROCESSING") {
+          setStatus(t("apply.statusLive", { doc: tk(`slot.${d.document_type}`, d.document_type), status: stateTag(d.state, t).text }));
+          break;
+        }
       } catch {
         break;
       }
@@ -397,20 +418,23 @@ function DocumentsStep({ applicationId, stage, gate }: { applicationId: string; 
 
   const onFile = async (slot: string, file: File | undefined) => {
     setError(null);
-    setLocalError(null);
     if (!file) return;
-    if (file.size > MAX_BYTES) return setLocalError(t("apply.tooLarge", { name: file.name }));
-    if (!ACCEPTED.includes(file.type)) return setLocalError(t("apply.badType", { name: file.name }));
+    // Size and type are checked by the backend (10 MiB; PDF, JPG, PNG); its 413 / 415 message is shown as returned.
     setUploading(slot);
+    setStatus(t("apply.statusLive", { doc: tk(`slot.${slot}`, slot), status: t("apply.uploading") }));
     try {
       const res = await ep.uploadDocument(applicationId, slot, file);
-      if (res.status === "QUALITY_REJECTED") setRetake((m) => ({ ...m, [slot]: res.quality.issues }));
+      if (res.status === "QUALITY_REJECTED") {
+        setRetake((m) => ({ ...m, [slot]: res.quality.issues }));
+        setStatus(t("apply.statusLive", { doc: tk(`slot.${slot}`, slot), status: issueText(res.quality.issues) }));
+      }
       else {
         setRetake((m) => ({ ...m, [slot]: [] }));
         await load();
         await poll(res.document_id);
       }
     } catch (e) {
+      setStatus("");
       setError(e);
     } finally {
       setUploading(null);
@@ -432,10 +456,10 @@ function DocumentsStep({ applicationId, stage, gate }: { applicationId: string; 
       <div className="quality-banner"><Icon name="shield" /><div><strong>{t("apply.qualityTitle")}</strong><p>{docs?.mock_notice ? t("apply.qualityMock") : t("apply.qualityText")}</p></div></div>
       {closed && <div className="alert-danger"><Icon name="warning" /><div><strong>{t("reason.application_closed")}</strong></div></div>}
       <ErrorNote error={error} />
-      {localError && <div className="alert-danger" role="alert"><Icon name="warning" /><div><strong>{localError}</strong></div></div>}
+      <p className="sr-only" aria-live="polite">{status}</p>
       {!docs && !error && <p>{t("common.loading")}</p>}
       {docs && docs.slots.length === 0 && <p>{t("common.empty")}</p>}
-      <div className="upload-list">
+      <ul className="upload-list">
         {docs?.slots.map(({ slot, document_id, state }) => {
           const view = (document_id && live[document_id]) || docs.documents.find((d) => d.document_id === document_id);
           const current = view?.state ?? state;
@@ -451,13 +475,13 @@ function DocumentsStep({ applicationId, stage, gate }: { applicationId: string; 
               action={
                 <>
                   <input ref={(el) => { inputs.current[slot] = el; }} type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" hidden onChange={(e) => onFile(slot, e.target.files?.[0])} />
-                  <Button variant={view ? "ghost" : "secondary"} disabled={closed || uploading !== null} onClick={() => inputs.current[slot]?.click()}>{view ? t("apply.replace") : t("apply.chooseFile")}</Button>
+                  <Button variant={view ? "ghost" : "blue"} icon={view ? undefined : "upload"} disabled={closed || uploading !== null} onClick={() => inputs.current[slot]?.click()}>{view ? t("apply.replace") : t("apply.chooseFile")}</Button>
                 </>
               }
             />
           );
         })}
-      </div>
+      </ul>
       <div className="form-actions"><Button onClick={() => navigate(`/dashboard?app=${encodeURIComponent(applicationId)}`)}>{t("apply.toDashboard")} <Icon name="arrow" /></Button></div>
     </>
   );

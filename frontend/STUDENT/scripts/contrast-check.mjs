@@ -26,6 +26,8 @@ const LIGHT_BG = ['--c-surface', '--c-page', '--c-subtle', '--c-primary-tint'];
 const pairs = [
   ...TEXT.flatMap((fg) => LIGHT_BG.map((bg) => [fg, bg, 4.5, 'text'])),
   ['--c-muted', '--c-track', 4.5, 'text (disabled button)'],
+  ['--c-muted', '--c-warning-tint', 4.5, 'text (upload row needing action)'],
+  ['--c-muted', '--c-success-tint', 4.5, 'text'],
   ['--c-success', '--c-surface', 4.5, 'text'],
   ['--c-success', '--c-success-tint', 4.5, 'text (chip, alert)'],
   ['--c-warning-text', '--c-surface', 4.5, 'text'],
