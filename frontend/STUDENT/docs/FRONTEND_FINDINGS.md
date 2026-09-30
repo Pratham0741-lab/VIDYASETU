@@ -585,3 +585,67 @@ not-selected account `MINISTRY_APPROVED` / `APPROVED`, list
   Not an app defect: the same icon logged a58 out.
 - Still open (outside F1-C): below 650px the design hides the inner-page
   language switch and the signed-out "Log in" button.
+
+## F1-D: Schemes section (monorepo, branch f1-d-schemes)
+
+### Step 1: investigation (read only, 2026-09-30)
+
+**1.1 GET /schemes and the current portal use**
+
+- `GET /api/v1/schemes` (public, no token) -> HTTP 200
+  `{schemes:[{scheme_code, scheme_name, version_no, scheme_version_id,
+  effective_from, effective_to}]}`. Backend (`schemes/scheme-catalogue.ts`)
+  lists every scheme version with `status = 'active'`, excluding schemes
+  tagged in `test_fixtures`, ordered by code then version. It does not
+  collapse versions: several active versions of one code would all be
+  returned (today: 6 schemes, one version each, including a new `ABC123`
+  v1, effective 2026-09-30, no end date).
+- Response header `Cache-Control: no-store` (all `/api` responses).
+- Portal today (`src/schemes.ts`): one module-level promise, created on the
+  first use of `useSchemeCatalogue` (landing page, application scheme
+  picker) and **never refreshed** (only cleared after an error). Because it
+  lives for the whole page load and SPA navigation keeps the module, a
+  scheme published a minute ago stays invisible until a full page reload.
+  Each load also fetches the form schema of every listed version.
+
+**1.2 Public form-schema and check-eligibility (field names only)**
+
+- `GET /schemes/{code}/versions/{version}/form-schema` -> `{scheme_code,
+  scheme_name, version_no, scheme_version_id, status, fields[{key, path,
+  types[], used_by[{rule_id, rule_type}], options[], limits[{rule_id,
+  param, value}]}], documents{required_documents[], rule_doc_refs[{doc_ref,
+  rule_ids[]}], checklist[]}, unparseable_rules[]}`.
+  No field labels (keys only) and **no mandatory flag** for documents:
+  `required_documents` are free-text labels (some end in "(if
+  applicable)"), `rule_doc_refs` are canonical document keys tied to the
+  rules that use them, and `checklist` is both lists merged.
+- `POST /schemes/check-eligibility` with `{"applicant":{}}` -> `{evaluation_run_id,
+  storage, evaluated_at, schemes_evaluated, eligible[], not_eligible[],
+  indeterminate[]}`, each scheme `{scheme_code, scheme_name, version_no,
+  scheme_version_id, outcome, eligible, failed_rules[], error_rules[{rule_id,
+  explanation}], rules[{rule_id, rule_type, verdict, value, message_key,
+  explanation, decisive}]}`. The per-version route
+  `POST /schemes/{code}/versions/{v}/check-eligibility` returns one such
+  entry plus `status`.
+- For an empty profile every rule is ERROR with explanation "<field> was
+  not provided (<rule_id>)" and a failure message key (e.g.
+  `err.income_ceiling_exceeded`). These are **not readable eligibility
+  conditions**, so the detail page uses the one-sentence fallback.
+- check-eligibility still evaluates 8 versions (the 6 listed plus the two
+  P16 test fixtures, R9).
+
+**1.3 Header "Schemes" link**
+
+- `navigate("/#checker")`: it scrolls to the eligibility checker on the
+  landing page; there is no scheme list page.
+
+**1.4 Rate limit**
+
+- `GET /schemes`: `@Throttle({ auth: { limit: 60, ttl: 60_000 } })` per IP;
+  the response carries `X-RateLimit-Limit-auth: 60`,
+  `X-RateLimit-Remaining-auth`, `X-RateLimit-Reset-auth`. Over the limit:
+  HTTP 429 `TOO_MANY_REQUESTS` (captured in F1-B). form-schema: 60/min;
+  check-eligibility: 30/min.
+- Consequence for the design: published scheme versions are immutable, so
+  form schemas can be cached per `scheme_version_id` for the page's life;
+  only the list needs the 30-second TTL.
