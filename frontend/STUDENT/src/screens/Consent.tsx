@@ -56,7 +56,7 @@ export default function ConsentScreen() {
         description={t("consent.description")}
         action={state ? <Tag tone="blue">{t("consent.noticeVersion", { version: state.notice_version })}</Tag> : undefined}
       />
-      <div className="verification-grid">
+      <div className="split">
         <Card>
           <div className="card-heading"><div><span className="eyebrow">{t("consent.purposesEyebrow")}</span><h2>{missing.length ? t("consent.missingTitle") : t("consent.completeTitle")}</h2><p>{missing.length ? t("consent.missingText") : t("consent.completeText")}</p></div></div>
           <ErrorNote error={error} />

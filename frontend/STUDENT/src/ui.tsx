@@ -91,12 +91,12 @@ export function ScreenTitle({ eyebrow, title, description, action }: { eyebrow: 
 }
 
 /** An error in the existing alert style, with the backend request id for support. */
-export function ErrorNote({ error }: { error: unknown }) {
+export function ErrorNote({ error, id }: { error: unknown; id?: string }) {
   const i18n = useI18n();
   if (!error) return null;
   const requestId = errorRequestId(error);
   return (
-    <div className="alert-danger" role="alert">
+    <div className="alert-danger" role="alert" id={id}>
       <Icon name="warning" />
       <div>
         <strong>{errorText(error, i18n)}</strong>

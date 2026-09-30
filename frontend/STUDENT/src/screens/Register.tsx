@@ -88,21 +88,21 @@ export default function RegisterScreen() {
   return (
     <main className="app-page">
       <ScreenTitle eyebrow={t("register.eyebrow")} title={t("register.title")} description={t("register.description")} />
-      <div className="content-sidebar">
+      <div className="split auth-grid">
         <Card>
           <div className="card-heading"><div><h2>{t("register.heading")}</h2><p>{t("register.subheading")}</p></div></div>
           <InfoNote title={t("register.recordedTitle")} text={t("register.recordedText")} />
-          <ErrorNote error={error} />
-          <form onSubmit={submit}>
-            <div className="type-control-row">
+          <ErrorNote error={error} id="form-error" />
+          <form onSubmit={submit} aria-describedby={error ? "form-error" : undefined}>
+            <div className="field-row">
               <label>{t("field.firstName")}<input required autoComplete="given-name" value={form.first_name} onChange={(e) => set("first_name", e.target.value)} /></label>
               <label>{t("field.lastName")}<input required autoComplete="family-name" value={form.last_name} onChange={(e) => set("last_name", e.target.value)} /></label>
             </div>
-            <div className="type-control-row">
+            <div className="field-row">
               <label>{t("field.email")}<input type="email" required autoComplete="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></label>
               <label>{t("field.newPassword")}<span>{t("field.passwordHint")}</span><input type="password" required minLength={12} maxLength={128} autoComplete="new-password" value={form.password} onChange={(e) => set("password", e.target.value)} /></label>
             </div>
-            <div className="type-control-row">
+            <div className="field-row">
               <label>{t("field.category")}
                 <select value={form.category} onChange={(e) => set("category", e.target.value as Form["category"])}>
                   <option value="ST">{t("category.ST")}</option>
@@ -118,20 +118,20 @@ export default function RegisterScreen() {
                 </select>
               </label>
             </div>
-            <div className="type-control-row">
+            <div className="field-row">
               <label>{t("field.dob")}<span>{t("common.optional")}</span><input type="date" value={form.dob} onChange={(e) => set("dob", e.target.value)} /></label>
               <label>{t("field.phone")}<span>{t("common.optional")}</span><input type="tel" inputMode="numeric" autoComplete="tel" value={form.phone} onChange={(e) => set("phone", e.target.value.replace(/[^\d+]/g, ""))} /></label>
             </div>
-            <div className="type-control-row">
+            <div className="field-row">
               <label>{t("field.domicileState")}<input required value={form.domicile_state} onChange={(e) => set("domicile_state", e.target.value)} /></label>
               <label>{t("field.domicileDistrict")}<span>{t("common.optional")}</span><input value={form.domicile_district} onChange={(e) => set("domicile_district", e.target.value)} /></label>
             </div>
-            <div className="type-control-row">
+            <div className="field-row">
               <label>{t("field.annualIncome")}<input required inputMode="numeric" value={form.annual_income} onChange={(e) => set("annual_income", e.target.value.replace(/\D/g, ""))} /></label>
               <label>{t("field.casteCert")}<input required value={form.caste_cert_number} onChange={(e) => set("caste_cert_number", e.target.value)} /></label>
             </div>
             <label>{t("field.bankAccount")}<input required autoComplete="off" value={form.bank_account} onChange={(e) => set("bank_account", e.target.value)} /></label>
-            <div className="type-control-row">
+            <div className="field-row">
               <label>{t("field.isDisabled")}
                 <select value={form.is_disabled ? "yes" : "no"} onChange={(e) => set("is_disabled", e.target.value === "yes")}>
                   <option value="no">{t("common.no")}</option>
@@ -146,7 +146,7 @@ export default function RegisterScreen() {
             </div>
           </form>
         </Card>
-        <aside>
+        <aside className="stack">
           <Card className="tip-card"><Icon name="document" /><h3>{t("register.tipTitle")}</h3><ul><li>{t("register.tip1")}</li><li>{t("register.tip2")}</li><li>{t("register.tip3")}</li></ul></Card>
         </aside>
       </div>

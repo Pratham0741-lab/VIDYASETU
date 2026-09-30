@@ -93,7 +93,7 @@ export default function SchemeDetailScreen() {
       {formError ? <Button variant="secondary" icon="refresh" onClick={retry}>{t("common.retry")}</Button> : null}
       {!form && !formError && <p>{t("common.loading")}</p>}
       {form && (
-        <div className="verification-grid">
+        <div className="split">
           <Card>
             <div className="card-heading"><div><span className="eyebrow">{t("detail.fieldsEyebrow")}</span><h2>{t("detail.fieldsTitle")}</h2><p>{t("detail.fieldsText")}</p></div></div>
             {form.fields.length === 0 && <p>{t("detail.noFields")}</p>}

@@ -18,7 +18,7 @@ export default function LandingScreen() {
   const preselected = params.get("scheme");
   const { schemes: browse, error: browseError } = useSchemeList();
   const i18n = useI18n();
-  const { t, tk, formatNumber } = i18n;
+  const { t, tk, formatAmount } = i18n;
   const { status } = useAuth();
   const { schemes, error: loadError, retry } = useSchemeCatalogue();
   const [category, setCategory] = useState("");
@@ -69,94 +69,81 @@ export default function LandingScreen() {
         : t("checker.resultsNone");
   const ruleText = (r: SchemeResult, rule: { rule_id: string; message_key: string | null; explanation: string }) => {
     const limit = incomeLimit(schemes?.find((s) => s.code === r.scheme_code)?.form ?? null);
-    const vars = { scheme: r.scheme_name, income: income ? `₹${formatNumber(Number(income))}` : "", limit: limit !== null ? `₹${formatNumber(limit)}` : "" };
+    const vars = { scheme: r.scheme_name, income: income ? formatAmount(Number(income)) : "", limit: limit !== null ? formatAmount(limit) : "" };
     return rule.message_key ? tk(`rule.${rule.message_key}`, rule.explanation, vars) : rule.explanation;
   };
 
   return (
-    <div className="landing-page">
-      <section className="vidya-hero">
-        <div className="vidya-overlay" />
-        <div className="vidya-content">
-          <div className="vidya-title">
-            <h1>{t("brand.name")}</h1>
-            <span>{t("landing.badge")}</span>
-          </div>
-          <p>{t("landing.intro1")}<br />{t("landing.intro2")}<br />{t("landing.intro3")}</p>
-          <div className="feature-strip">
-            <div><span><Icon name="search" /></span><div><strong>{t("landing.f1Title")}</strong><small>{t("landing.f1Text")}</small></div></div>
-            <div><span><Icon name="shield" /></span><div><strong>{t("landing.f2Title")}</strong><small>{t("landing.f2Text")}</small></div></div>
-            <div><span><Icon name="arrow" /></span><div><strong>{t("landing.f3Title")}</strong><small>{t("landing.f3Text")}</small></div></div>
-            <div><span><Icon name="user" /></span><div><strong>{t("landing.f4Title")}</strong><small>{t("landing.f4Text")}</small></div></div>
-          </div>
-          <div className="hero-quote">{t("landing.quote1")}<br /><span>{t("landing.quote2")}</span><br />{t("landing.quote3")}</div>
-        </div>
+    <main className="app-page landing-page">
+      <section className="landing-hero" aria-labelledby="landing-title">
+        <span className="tag tag-amber">{t("landing.badge")}</span>
+        <h1 id="landing-title">{t("brand.name")}</h1>
+        <p>{t("landing.intro1")} {t("landing.intro2")} {t("landing.intro3")}</p>
+        <ul className="feature-strip">
+          {([["search", "landing.f1Title", "landing.f1Text"], ["shield", "landing.f2Title", "landing.f2Text"], ["upload", "landing.f3Title", "landing.f3Text"], ["user", "landing.f4Title", "landing.f4Text"]] as const).map(([icon, title, text]) => (
+            <li key={title}><span className="feature-icon"><Icon name={icon} /></span><span><strong>{t(title)}</strong><small>{t(text)}</small></span></li>
+          ))}
+        </ul>
       </section>
 
-      <main className="vidya-checker" id="checker">
-        <div className="vidya-checker-grid">
-          <Card className="vidya-form">
-            <div className="vidya-card-title"><span><Icon name="document" /></span><h2>{t("checker.title")}</h2></div>
-            <label>{t("field.category")}
-              <select value={category} onChange={(event) => setCategory(event.target.value)}>
-                <option value="">{t("common.notStated")}</option>
-                {categories.map((c) => <option key={c} value={c}>{categoryLabel(i18n, c)}</option>)}
-              </select>
-            </label>
-            <label><span className="field-icon">₹</span> {t("field.annualIncome")}
-              <input value={income} onChange={(event) => setIncome(event.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder={t("checker.incomePlaceholder")} />
-            </label>
-            <label><Icon name="document" /> {t("checker.level")}
-              <select value={level} onChange={(event) => setLevel(event.target.value)}>
-                <option value="">{t("common.notStated")}</option>
-                {levels.map((l) => <option key={l} value={l}>{l}</option>)}
-              </select>
-            </label>
-            <Button onClick={() => runCheck()} disabled={checking || !schemes}>{checking ? t("common.pleaseWait") : t("header.checkEligibility")}</Button>
-          </Card>
+      <section className="checker-grid" id="checker" aria-labelledby="checker-title">
+        <Card className="checker-form">
+          <div className="card-heading"><h2 id="checker-title">{t("checker.title")}</h2></div>
+          <label htmlFor="chk-category">{t("field.category")}</label>
+          <select id="chk-category" value={category} onChange={(event) => setCategory(event.target.value)}>
+            <option value="">{t("common.notStated")}</option>
+            {categories.map((c) => <option key={c} value={c}>{categoryLabel(i18n, c)}</option>)}
+          </select>
+          <label htmlFor="chk-income">{t("field.annualIncome")}</label>
+          <div className="input-prefix"><span aria-hidden="true">₹</span><input id="chk-income" value={income} onChange={(event) => setIncome(event.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder={t("checker.incomePlaceholder")} /></div>
+          <label htmlFor="chk-level">{t("checker.level")}</label>
+          <select id="chk-level" value={level} onChange={(event) => setLevel(event.target.value)}>
+            <option value="">{t("common.notStated")}</option>
+            {levels.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+          <Button className="checker-submit" onClick={() => runCheck()} disabled={checking || !schemes}>{checking ? t("common.pleaseWait") : t("header.checkEligibility")}</Button>
+        </Card>
 
-          <Card className="vidya-results">
-            <div className="vidya-result-title">
-              <span><Icon name={check && eligibleCount === 0 ? "warning" : "check"} /></span>
-              <div><h2>{title}</h2><small>{check ? t("checker.basedOn") : t("checker.hint")}</small></div>
-            </div>
-            <ErrorNote error={loadError || error} />
-            {loadError ? <div className="view-schemes"><Button variant="secondary" onClick={retry}>{t("common.retry")}</Button></div> : null}
-            {!schemes && !loadError && <p>{t("common.loading")}</p>}
-            {schemes && schemes.length === 0 && <p>{t("common.empty")}</p>}
-            {schemes && schemes.length > 0 && (
-              <div className="scheme-table">
-                <div className="scheme-header"><strong>{t("checker.colScheme")}</strong><strong>{t("checker.colRule")}</strong><strong>{t("checker.colStatus")}</strong></div>
-                {[...schemes].sort((a, b) => Number(b.code === preselected) - Number(a.code === preselected)).map((s) => {
-                  const r = results.get(s.code);
-                  const limit = incomeLimit(s.form);
-                  return (
-                    <div key={s.versionId}>
-                      <div><strong>{s.name}</strong><small>{t("checker.version", { code: s.code, version: s.version })}</small>{s.code === preselected && <Tag tone="blue">{t("checker.selectedScheme")}</Tag>}</div>
-                      <div><span>{limit !== null ? t("checker.incomeLimit", { limit: `₹${formatNumber(limit)}` }) : t("checker.noIncomeLimit")}</span><small>{t("checker.fieldCount", { count: s.form?.fields.length ?? 0 })}</small></div>
-                      {r ? <Tag tone={OUTCOME_TONE[r.outcome] ?? "gray"}><Icon name={r.outcome === "ELIGIBLE" ? "check" : "warning"} /> {tk(`outcome.${r.outcome}`, r.outcome)}</Tag> : <Tag tone="gray">{t("checker.notChecked")}</Tag>}
-                    </div>
-                  );
-                })}
-                {unlisted.map((r) => (
-                  <div key={r.scheme_version_id}>
-                    <div><strong>{r.scheme_name}</strong><small>{t("checker.version", { code: r.scheme_code, version: r.version_no })}</small></div>
-                    <div><span>{t("common.notAvailable")}</span><small>{t("checker.notInList")}</small></div>
-                    <Tag tone={OUTCOME_TONE[r.outcome] ?? "gray"}><Icon name={r.outcome === "ELIGIBLE" ? "check" : "warning"} /> {tk(`outcome.${r.outcome}`, r.outcome)}</Tag>
-                  </div>
-                ))}
-              </div>
-            )}
-            {failed.map((r) => (
-              <div className="vidya-explain" key={r.scheme_version_id}><Icon name="warning" /><p><span className="fg-inline-bold">{r.scheme_name}:</span> {r.failed_rules.map((f) => ruleText(r, f)).join(" ")}</p></div>
-            ))}
-            <div className="view-schemes">
-              <Button variant="secondary" onClick={() => navigate(status === "signed-in" ? "/apply" : "/register")}>{status === "signed-in" ? t("checker.toApply") : t("checker.toRegister")} <Icon name="arrow" /></Button>
-            </div>
-          </Card>
-        </div>
-      </main>
-      <section className="landing-main landing-browse" aria-labelledby="browse-title">
+        <Card className={`checker-results ${check && eligibleCount > 0 ? "accent-green" : check ? "accent-amber" : ""}`}>
+          <div className="card-heading">
+            <div><h2 aria-live="polite">{title}</h2><p>{check ? t("checker.basedOn") : t("checker.hint")}</p></div>
+          </div>
+          <ErrorNote error={loadError || error} />
+          {loadError ? <Button variant="secondary" onClick={retry}>{t("common.retry")}</Button> : null}
+          {!schemes && !loadError && <p>{t("common.loading")}</p>}
+          {schemes && schemes.length === 0 && <p>{t("common.empty")}</p>}
+          {schemes && schemes.length > 0 && (
+            <ul className="scheme-rows">
+              {[...schemes].sort((a, b) => Number(b.code === preselected) - Number(a.code === preselected)).map((s) => {
+                const r = results.get(s.code);
+                const limit = incomeLimit(s.form);
+                return (
+                  <li key={s.versionId}>
+                    <div><strong>{s.name}</strong><small className="num">{t("checker.version", { code: s.code, version: s.version })}</small>{s.code === preselected && <Tag tone="blue">{t("checker.selectedScheme")}</Tag>}</div>
+                    <div className="num"><span>{limit !== null ? t("checker.incomeLimit", { limit: formatAmount(limit) }) : t("checker.noIncomeLimit")}</span><small>{t("checker.fieldCount", { count: s.form?.fields.length ?? 0 })}</small></div>
+                    {r ? <Tag tone={OUTCOME_TONE[r.outcome] ?? "gray"}><Icon name={r.outcome === "ELIGIBLE" ? "check" : "warning"} /> {tk(`outcome.${r.outcome}`, r.outcome)}</Tag> : <Tag tone="gray">{t("checker.notChecked")}</Tag>}
+                  </li>
+                );
+              })}
+              {unlisted.map((r) => (
+                <li key={r.scheme_version_id}>
+                  <div><strong>{r.scheme_name}</strong><small className="num">{t("checker.version", { code: r.scheme_code, version: r.version_no })}</small></div>
+                  <div><span>{t("common.notAvailable")}</span><small>{t("checker.notInList")}</small></div>
+                  <Tag tone={OUTCOME_TONE[r.outcome] ?? "gray"}><Icon name={r.outcome === "ELIGIBLE" ? "check" : "warning"} /> {tk(`outcome.${r.outcome}`, r.outcome)}</Tag>
+                </li>
+              ))}
+            </ul>
+          )}
+          {failed.map((r) => (
+            <div className="alert-warning" key={r.scheme_version_id}><Icon name="warning" /><div><strong>{r.scheme_name}</strong><p>{r.failed_rules.map((f) => ruleText(r, f)).join(" ")}</p></div></div>
+          ))}
+          <div className="form-actions">
+            <Button variant="blue" onClick={() => navigate(status === "signed-in" ? "/apply" : "/register")}>{status === "signed-in" ? t("checker.toApply") : t("checker.toRegister")} <Icon name="arrow" /></Button>
+          </div>
+        </Card>
+      </section>
+
+      <section className="landing-browse" aria-labelledby="browse-title">
         <div className="section-intro">
           <span className="eyebrow">{t("schemes.eyebrow")}</span>
           <h2 id="browse-title">{t("landing.browseTitle")}</h2>
@@ -170,14 +157,14 @@ export default function LandingScreen() {
             {[...browse].sort((a, b) => a.scheme_name.localeCompare(b.scheme_name)).slice(0, 6).map((s) => <SchemeCard key={s.scheme_version_id} scheme={s} />)}
           </div>
         )}
-        <div className="view-schemes"><Link to="/schemes" className="btn btn-secondary">{t("landing.viewAll", { n: browse?.length ?? 0 })} <Icon name="arrow" /></Link></div>
+        <div className="view-all"><Link to="/schemes" className="btn btn-secondary">{t("landing.viewAll", { n: browse?.length ?? 0 })} <Icon name="arrow" /></Link></div>
       </section>
-      <section className="vidya-metrics" aria-label={t("landing.factsLabel")}>
-        <div><span><Icon name="document" /></span><div><strong>{t("landing.m1Title")}</strong><small>{t("landing.m1Text")}</small></div></div>
-        <div><span><Icon name="upload" /></span><div><strong>{t("landing.m2Title")}</strong><small>{t("landing.m2Text")}</small></div></div>
-        <div><span><Icon name="shield" /></span><div><strong>{t("landing.m3Title")}</strong><small>{t("landing.m3Text")}</small></div></div>
-        <div><span><Icon name="search" /></span><div><strong>{t("landing.m4Title")}</strong><small>{t("landing.m4Text")}</small></div></div>
+
+      <section className="card-grid landing-facts" aria-label={t("landing.factsLabel")}>
+        {([["document", "landing.m1Title", "landing.m1Text", ""], ["upload", "landing.m2Title", "landing.m2Text", "accent-green"], ["shield", "landing.m3Title", "landing.m3Text", "accent-amber"], ["search", "landing.m4Title", "landing.m4Text", ""]] as const).map(([icon, title, text, accent]) => (
+          <Card className={`info-card ${accent}`} key={title}><span className="info-icon"><Icon name={icon} size={24} /></span><div><h3>{t(title)}</h3><p className="muted">{t(text)}</p></div></Card>
+        ))}
       </section>
-    </div>
+    </main>
   );
 }

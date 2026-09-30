@@ -38,15 +38,15 @@ export default function LoginScreen() {
   return (
     <main className="app-page">
       <ScreenTitle eyebrow={t("login.eyebrow")} title={t("login.title")} description={t("login.description")} />
-      <div className="content-sidebar">
+      <div className="split auth-grid">
         <Card>
           <div className="card-heading"><div><h2>{t("login.heading")}</h2><p>{t("login.subheading")}</p></div></div>
           {signOutReason === "expired" && !notApplicant && <InfoNote icon="clock" title={t("auth.expiredTitle")} text={t("auth.expiredText")} />}
           {notApplicant && (
             <div className="alert-danger" role="alert"><Icon name="warning" /><div><strong>{t("auth.notApplicantTitle")}</strong><p>{t("auth.notApplicantText")}</p></div></div>
           )}
-          <ErrorNote error={error} />
-          <form onSubmit={submit}>
+          <ErrorNote error={error} id="form-error" />
+          <form onSubmit={submit} aria-describedby={error ? "form-error" : undefined}>
             <label>{t("field.email")}
               <input type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </label>
@@ -59,7 +59,7 @@ export default function LoginScreen() {
             </div>
           </form>
         </Card>
-        <aside>
+        <aside className="stack">
           <Card className="tip-card"><Icon name="shield" /><h3>{t("login.tipTitle")}</h3><ul><li>{t("login.tip1")}</li><li>{t("login.tip2")}</li><li>{t("login.tip3")}</li></ul></Card>
           <Card className="help-card"><h3>{t("login.newTitle")}</h3><p>{t("login.newText")}</p><Link to="/register" className="btn btn-secondary">{t("header.register")}</Link></Card>
         </aside>
