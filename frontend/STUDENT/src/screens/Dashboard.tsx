@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import * as ep from "../api/endpoints";
-import type { Application, ApplicationDocuments, HistoryEntry, Notification, Stage } from "../api/responses";
+import type { Application, ApplicationDocuments, ConsentState, HistoryEntry, Notification, Stage } from "../api/responses";
 import { ApplicationPicker, useMyApplications } from "../applications";
 import { useAuth } from "../auth/AuthProvider";
 import { NOTIFICATIONS_CHANGED } from "../layout";
@@ -75,20 +75,22 @@ function Timeline({ app, history }: { app: Application; history: HistoryEntry[] 
   const i18n = useI18n();
   const steps = buildSteps(app, history, i18n);
   return (
-    <div className="timeline" style={steps.length !== 5 ? { gridTemplateColumns: `repeat(${steps.length}, minmax(150px, 1fr))` } : undefined}>
+    <ol className="journey">
       {steps.map((step, index) => (
-        <div className={step.state} key={step.key}>
-          <span>{step.state === "complete" ? <Icon name="check" /> : index + 1}</span>
+        <li className={step.state} key={step.key} aria-current={step.state === "current" ? "step" : undefined}>
+          <span className="journey-node num" aria-hidden="true">{step.state === "complete" ? <Icon name="check" /> : index + 1}</span>
+          <span className="sr-only">{i18n.t("dash.journeyStep", { n: index + 1 })}</span>
           <strong>{i18n.tk(`stage.${step.stage}`, humanise(step.stage))}</strong>
-          <small>{step.meta}</small>
-        </div>
+          {step.meta && <small className="num">{step.meta}</small>}
+        </li>
       ))}
-    </div>
+    </ol>
   );
 }
 
 export default function DashboardScreen() {
   const { t, formatDate } = useI18n();
+  const [consents, setConsents] = useState<ConsentState | null>(null);
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { apps, selected, select, error: appsError } = useMyApplications();
@@ -111,6 +113,10 @@ export default function DashboardScreen() {
     ep.listNotifications().then((r) => setNotes(r.notifications), setError);
   }, []);
   useEffect(loadNotes, [loadNotes]);
+  useEffect(() => {
+    // The Contact card only; a failure hides the consent line.
+    ep.getConsents().then(setConsents, () => setConsents(null));
+  }, []);
 
   const markRead = async (id: string) => {
     try {
@@ -127,53 +133,88 @@ export default function DashboardScreen() {
   const unread = notes?.filter((n) => !n.read_at).length ?? 0;
   const appNotes = notes?.filter((n) => !selected || !n.application_id || n.application_id === selected.id) ?? [];
 
+  const firstName = profile?.first_name?.trim();
+  const given = consents?.purposes.filter((p) => p.status === "GIVEN").length ?? 0;
+  const language = profile?.preferred_language === "hi" ? t("lang.hi") : profile?.preferred_language === "en" ? t("lang.en") : null;
+
   return (
-    <main className="app-page">
+    <main className="app-page track-page">
       <ScreenTitle
         eyebrow={t("dash.eyebrow")}
-        title={t("dash.hello", { name: profile?.first_name ?? "" })}
+        title={firstName ? t("dash.hello", { name: firstName }) : t("dash.titleNoName")}
         description={t("dash.description")}
         action={selected ? <Button variant="secondary" icon="document" onClick={() => navigate(`/apply?app=${encodeURIComponent(selected.id)}`)}>{t("dash.viewDocuments")}</Button> : undefined}
       />
       <ApplicationPicker apps={apps} selected={selected} onSelect={select} />
       <ErrorNote error={appsError || error} />
       {apps && !selected && (
-        <Card className="timeline-card"><div className="card-heading"><div><h2>{t("dash.noAppTitle")}</h2><p>{t("dash.noAppText")}</p></div><Button onClick={() => navigate("/apply")}>{t("checker.toApply")} <Icon name="arrow" /></Button></div></Card>
+        <Card><div className="card-heading"><div><h2>{t("dash.noAppTitle")}</h2><p>{t("dash.noAppText")}</p></div><Button onClick={() => navigate("/apply")}>{t("checker.toApply")} <Icon name="arrow" /></Button></div></Card>
       )}
       {!apps && !appsError && <p>{t("common.loading")}</p>}
       {selected && (
         <>
-          <div className="status-hero">
-            <div>
+          <section className={`banner status-banner is-${selected.status.toLowerCase()}`} aria-labelledby="status-title">
+            <span className="status-icon" aria-hidden="true"><Icon name={selected.current_stage === "DEFECTIVE" ? "warning" : "info"} size={24} /></span>
+            <div className="status-copy">
               <Tag tone={STATUS_TONE[selected.status] ?? "gray"}>{t(`status.${selected.status}` as MessageKey)}</Tag>
-              <h2>{t(`stageHero.${selected.current_stage}` as MessageKey)}</h2>
+              <h2 id="status-title">{t(`stageHero.${selected.current_stage}` as MessageKey)}</h2>
               <p>{t(`stageHelp.${selected.current_stage}` as MessageKey)}</p>
-              {selected.current_stage === "DEFECTIVE" && <p><Button variant="secondary" onClick={() => navigate(`/deficiencies?app=${encodeURIComponent(selected.id)}`)}>{t("dash.toDeficiencies")}</Button></p>}
+              {selected.current_stage === "DEFECTIVE" && <Button variant="secondary" onClick={() => navigate(`/deficiencies?app=${encodeURIComponent(selected.id)}`)}>{t("dash.toDeficiencies")} <Icon name="arrow" /></Button>}
             </div>
-            <div className="id-block"><small>{t("dash.applicationId")}</small><strong>{selected.application_no}</strong><span>{selected.submitted_at ? t("dash.submittedOn", { date: formatDate(selected.submitted_at) }) : ""} · {selected.academic_year}</span></div>
-          </div>
-          <Card className="timeline-card">
-            <div className="card-heading"><div><h2>{t("dash.journeyTitle")}</h2><p>{history ? t("dash.journeyText") : t("dash.journeyFallback")}</p></div><span className="live-dot">{t("dash.fromApi")}</span></div>
+            <dl className="id-block">
+              <dt>{t("dash.applicationId")}</dt>
+              <dd className="num">{selected.application_no}</dd>
+              {(selected.submitted_at || selected.academic_year) && (
+                <dd className="id-meta num">{[selected.submitted_at ? t("dash.submittedOn", { date: formatDate(selected.submitted_at) }) : "", selected.academic_year].filter(Boolean).join(" · ")}</dd>
+              )}
+            </dl>
+          </section>
+          <Card className="journey-card">
+            <div className="card-heading"><div><h2>{t("dash.journeyTitle")}</h2><p>{history ? t("dash.journeyText") : t("dash.journeyFallback")}</p></div></div>
             <ErrorNote error={historyError} />
             <Timeline app={selected} history={history} />
           </Card>
-          <div className="three-cards">
-            <Card><span className="card-kicker">{t("dash.cardStage")}</span><h3>{selected.stage_due_at ? t("dash.dueBy", { date: formatDate(selected.stage_due_at) }) : t("dash.noDue")}</h3><p>{t("dash.slaNote")}</p></Card>
-            <Card><span className="card-kicker">{t("dash.cardDocs")}</span><h3>{docs ? t("dash.docsCount", { n: uploaded, m: docs.slots.length }) : t("common.loading")}</h3><p>{needsAction ? t("dash.docsAction", { n: needsAction }) : t("dash.docsOk")}</p></Card>
-            <Card><span className="card-kicker">{t("dash.cardNotes")}</span><h3>{notes ? t("dash.unread", { n: unread }) : t("common.loading")}</h3><p>{t("dash.notesNote")}</p></Card>
+          <div className="card-grid track-cards">
+            <Card className="info-card">
+              <span className="info-icon"><Icon name="calendar" size={24} /></span>
+              <div>
+                <h3>{t("dash.cardStage")}</h3>
+                <p className="num">{selected.stage_due_at ? t("dash.dueBy", { date: formatDate(selected.stage_due_at) }) : t("dash.noDue")}</p>
+                {selected.stage_due_at && <p className="muted">{t("dash.slaNote")}</p>}
+              </div>
+            </Card>
+            <Card className="info-card accent-green">
+              <span className="info-icon"><Icon name="document" size={24} /></span>
+              <div>
+                <h3>{t("dash.cardDocs")}</h3>
+                <p className="num">{docs ? t("dash.docsCount", { n: uploaded, m: docs.slots.length }) : t("common.loading")}</p>
+                {docs && <p className="muted">{needsAction ? t("dash.docsAction", { n: needsAction }) : t("dash.docsOk")}</p>}
+              </div>
+            </Card>
+            <Card className="info-card accent-amber">
+              <span className="info-icon"><Icon name="mail" size={24} /></span>
+              <div>
+                <h3>{t("dash.cardContact")}</h3>
+                <p className="num">{notes ? t("dash.contactInApp", { n: unread }) : t("common.loading")}</p>
+                {language && <p className="muted">{t("dash.contactLanguage", { lang: language })}</p>}
+                {consents && consents.purposes.length > 0 && <p className="muted num">{t("dash.consentsGiven", { n: given, m: consents.purposes.length })}</p>}
+                <Link to="/consent" className="text-link">{t("dash.manageConsent")}</Link>
+              </div>
+            </Card>
           </div>
         </>
       )}
-      <Card className="timeline-card notifications-card" id="notifications">
+      <Card className="notifications-card" id="notifications">
         <div className="card-heading"><div><h2>{t("dash.notesTitle")}</h2><p>{t("dash.notesText")}</p></div></div>
+        {!notes && <p>{t("common.loading")}</p>}
         {notes && appNotes.length === 0 && <p>{t("dash.notesEmpty")}</p>}
         {appNotes.length > 0 && (
           <div className="check-table">
             {appNotes.map((n) => (
               <div className="check-row" key={n.id}>
-                <span className="rule-check">{n.read_at ? <Icon name="check" /> : <Icon name="clock" />}</span>
-                <div><small>{formatDate(n.created_at, true)}</small><strong>{n.subject ?? n.event_type}</strong><small className="note-body">{n.body}</small></div>
-                <div>{n.read_at ? <Tag tone="gray">{t("dash.read")}</Tag> : <Button variant="secondary" onClick={() => markRead(n.id)}>{t("dash.markRead")}</Button>}</div>
+                <span className="rule-check">{n.read_at ? <Icon name="check" /> : <Icon name="bell" />}</span>
+                <div><small className="num">{formatDate(n.created_at, true)}</small><strong>{n.subject ?? n.event_type}</strong>{n.body && <p className="note-body">{n.body}</p>}</div>
+                <div>{n.read_at ? <Tag tone="gray">{t("dash.read")}</Tag> : <Button variant="secondary" className="btn-sm" onClick={() => markRead(n.id)}>{t("dash.markRead")}</Button>}</div>
               </div>
             ))}
           </div>

@@ -132,3 +132,13 @@ without a key is shown humanised (underscores to spaces, sentence case), e.g.
 | `def.dueToday` | Due today | आज अंतिम दिन |
 | `def.uploadedLive` | {doc}: replacement uploaded | {doc}: नया दस्तावेज़ अपलोड हो गया |
 | `def.uploadingLive` | {doc}: uploading… | {doc}: अपलोड हो रहा है… |
+| `dash.cardStage` (UI v2) | Next expected update | अगला अपेक्षित अपडेट |
+| `dash.dueBy` (UI v2) | Target date: {date} | लक्ष्य तिथि: {date} |
+| `dash.cardDocs` / `dash.cardNotes` / `dash.applicationId` (UI v2, sentence case) | Documents / Notifications / Application number | दस्तावेज़ / सूचनाएँ / आवेदन संख्या |
+| `dash.titleNoName` | Your application | आपका आवेदन |
+| `dash.cardContact` | Contact and consent | संपर्क और सहमति |
+| `dash.contactInApp` | In-app notifications: {n} unread | ऐप में सूचनाएँ: {n} अपठित |
+| `dash.contactLanguage` | Messages in: {lang} | संदेशों की भाषा: {lang} |
+| `dash.consentsGiven` | {n} of {m} consents given | {m} में से {n} सहमतियाँ दी गईं |
+| `dash.manageConsent` | Review consent | सहमति देखें |
+| `dash.journeyStep` | Step {n} | चरण {n} |
