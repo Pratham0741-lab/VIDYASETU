@@ -8,6 +8,7 @@
 @import '@fontsource/nunito/400.css';
 @import '@fontsource/nunito/700.css';
 @import 'tailwindcss';
+@import './tokens.css';
 
 :root {
   --navy: #0b192c;

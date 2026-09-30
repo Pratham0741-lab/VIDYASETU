@@ -1,0 +1,34 @@
+/*
+ * UI v2 design tokens. Colours sampled from docs/ui-v2/*.png with
+ * scripts/sample-colours.py (see docs/UI_V2_NOTES.md). This file is the only
+ * place colours are written; components use the variables.
+ */
+:root {
+  /* Sampled */
+  --c-page: #f0f6fb;
+  --c-surface: #ffffff;
+  --c-navy: #32446b;
+  --c-primary: #316ab1;
+  --c-amber: #f4a235;
+  --c-success: #297c51;
+  --c-success-step: #38884c;
+  --c-warning: #f4a235;
+  --c-error: #dd3c42;
+  --c-error-tint: #fef0f1;
+  --c-border: #d3e4f2;
+  --c-muted: #618098;
+
+  /* Derived (tints and text shades of the sampled hues; see contrast-check) */
+  --c-ink: var(--c-navy);
+  --c-primary-hover: #28599a;
+  --c-primary-tint: #e4eef8;
+  --c-success-tint: #e6f3ec;
+  --c-warning-text: #93540a;
+  --c-warning-tint: #fdf1e1;
+  --c-error-text: #c42d34;
+  --c-error-border: #eea7aa;
+  --c-on-navy: #ffffff;
+  --c-on-navy-muted: #c9d3e4;
+  --c-track: #dbe7f3;
+  --c-focus: #316ab1;
+}
