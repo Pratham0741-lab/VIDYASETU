@@ -132,6 +132,13 @@ export default function ApplicationScreen() {
 
   const startNew = params.get("new") === "1";
   const scheme = useMemo(() => schemes?.find((s) => s.versionId === form.schemeVersionId), [schemes, form.schemeVersionId]);
+  // ?scheme=CODE (from the Schemes section) preselects that scheme's current version, but only into an empty
+  // picker: a resumed draft keeps its own scheme.
+  const wantedCode = params.get("scheme");
+  const wantedScheme = wantedCode && schemes ? (schemes.find((s) => s.code === wantedCode) ?? null) : null;
+  useEffect(() => {
+    if (wantedScheme && !form.schemeVersionId) setForm((f) => (f.schemeVersionId ? f : { ...f, schemeVersionId: wantedScheme.versionId }));
+  }, [wantedScheme, form.schemeVersionId]);
 
   // Where to start: an existing application goes to its documents; else resume the latest draft; else the profile.
   useEffect(() => {
@@ -254,6 +261,7 @@ export default function ApplicationScreen() {
           {step === 1 && (
             <>
               <div className="card-heading"><div><h2>{t("apply.formTitle")}</h2><p>{t("apply.formText")}</p></div></div>
+              {wantedCode && schemes && !wantedScheme && <InfoNote icon="warning" title={t("apply.schemeNotOpen", { code: wantedCode })} />}
               {draft && resumed && !saved && <InfoNote icon="document" title={t("apply.draftResumed")} text={t("apply.draftSavedAt", { date: formatDate(draft.updated_at, true) })} />}
               <label>{t("apply.scheme")}
                 <select value={form.schemeVersionId} onChange={(e) => setField("schemeVersionId", e.target.value)}>

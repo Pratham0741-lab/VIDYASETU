@@ -209,6 +209,7 @@ export const en = {
   "apply.draftSaved": "Draft saved",
   "apply.draftSavedAt": "Last saved {date}.",
   "apply.scheme": "Scheme",
+  "apply.schemeNotOpen": "The scheme {code} is not open for applications right now. Choose another scheme below.",
   "apply.chooseScheme": "Choose a scheme",
   "apply.academicYear": "Academic year",
   "apply.courseYear": "Year of course",

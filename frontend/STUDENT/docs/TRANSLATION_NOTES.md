@@ -118,3 +118,4 @@ without a key is shown humanised (underscores to spaces, sentence case), e.g.
 | `landing.browseText` | Every scheme open for applications, as the backend lists it. Open one to see what it asks for. | आवेदन के लिए खुली हर योजना, जैसे बैकएंड उसे सूचीबद्ध करता है। उसमें क्या माँगा जाता है, यह देखने के लिए उसे खोलें। |
 | `landing.viewAll` | View all schemes ({n}) | सभी योजनाएँ देखें ({n}) |
 | `checker.selectedScheme` | Selected scheme | चुनी गई योजना |
+| `apply.schemeNotOpen` | The scheme {code} is not open for applications right now. Choose another scheme below. | योजना {code} अभी आवेदन के लिए खुली नहीं है। नीचे कोई और योजना चुनें। |

@@ -204,6 +204,7 @@ export const hi: Record<MessageKey, string> = {
   "apply.draftSaved": "मसौदा सहेजा गया",
   "apply.draftSavedAt": "अंतिम बार सहेजा गया: {date}।",
   "apply.scheme": "योजना",
+  "apply.schemeNotOpen": "योजना {code} अभी आवेदन के लिए खुली नहीं है। नीचे कोई और योजना चुनें।",
   "apply.chooseScheme": "योजना चुनें",
   "apply.academicYear": "शैक्षणिक वर्ष",
   "apply.courseYear": "पाठ्यक्रम का वर्ष",
