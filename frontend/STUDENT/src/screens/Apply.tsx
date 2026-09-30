@@ -101,7 +101,7 @@ function UploadRow({ title, file, issue, tag, action }: { title: string; file?: 
   return (
     <div className={`upload-row ${issue ? "has-issue" : ""}`}>
       <span className="upload-icon"><Icon name={file ? "document" : "upload"} /></span>
-      <div><strong>{title}</strong><p>{file || t("apply.fileHint")}</p>{issue && <small><Icon name="warning" size={14} />{issue}</small>}</div>
+      <div><strong>{title}</strong><p>{file || t("apply.fileHint")}</p>{issue && <small><Icon name="warning" />{issue}</small>}</div>
       {tag && <Tag tone={tag.tone}>{tag.text}</Tag>}
       {action}
     </div>

@@ -6,8 +6,8 @@
 export const en = {
   // brand, header, footer
   "brand.name": "VidyaSetu",
-  "brand.tagline": "Smart India Hackathon 2026 prototype",
-  "brand.full": "VidyaSetu: Smart India Hackathon 2026 prototype",
+  "brand.tagline": "Prototype · Smart India Hackathon 2026",
+  "brand.full": "VidyaSetu: Prototype · Smart India Hackathon 2026",
   "brand.strip": "VidyaSetu: Smart India Hackathon 2026 prototype · not an official government service",
   "header.skip": "Skip to main content",
   "header.primaryNav": "Primary navigation",
@@ -33,6 +33,9 @@ export const en = {
   "nav.track": "Track",
   "nav.deficiencies": "Deficiencies",
   "nav.merit": "Merit",
+  "nav.stepDone": "(completed)",
+  "header.notifications": "Notifications",
+  "header.notificationsUnread": "Notifications: {n} unread",
 
   // common
   "common.pleaseWait": "Please wait…",

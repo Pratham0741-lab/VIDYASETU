@@ -119,3 +119,8 @@ without a key is shown humanised (underscores to spaces, sentence case), e.g.
 | `landing.viewAll` | View all schemes ({n}) | सभी योजनाएँ देखें ({n}) |
 | `checker.selectedScheme` | Selected scheme | चुनी गई योजना |
 | `apply.schemeNotOpen` | The scheme {code} is not open for applications right now. Choose another scheme below. | योजना {code} अभी आवेदन के लिए खुली नहीं है। नीचे कोई और योजना चुनें। |
+| `brand.tagline` (UI v2) | Prototype · Smart India Hackathon 2026 | प्रोटोटाइप · स्मार्ट इंडिया हैकाथॉन 2026 |
+| `brand.full` (UI v2) | VidyaSetu: Prototype · Smart India Hackathon 2026 | विद्यासेतु: प्रोटोटाइप · स्मार्ट इंडिया हैकाथॉन 2026 |
+| `nav.stepDone` | (completed) | (पूरा हुआ) |
+| `header.notifications` | Notifications | सूचनाएँ |
+| `header.notificationsUnread` | Notifications: {n} unread | सूचनाएँ: {n} अपठित |

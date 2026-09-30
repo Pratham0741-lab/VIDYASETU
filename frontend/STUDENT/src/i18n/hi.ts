@@ -7,8 +7,8 @@ import type { MessageKey } from './en';
 
 export const hi: Record<MessageKey, string> = {
   "brand.name": "विद्यासेतु",
-  "brand.tagline": "स्मार्ट इंडिया हैकाथॉन 2026 प्रोटोटाइप",
-  "brand.full": "विद्यासेतु: स्मार्ट इंडिया हैकाथॉन 2026 प्रोटोटाइप",
+  "brand.tagline": "प्रोटोटाइप · स्मार्ट इंडिया हैकाथॉन 2026",
+  "brand.full": "विद्यासेतु: प्रोटोटाइप · स्मार्ट इंडिया हैकाथॉन 2026",
   "brand.strip": "विद्यासेतु: स्मार्ट इंडिया हैकाथॉन 2026 प्रोटोटाइप · यह आधिकारिक सरकारी सेवा नहीं है",
   "header.skip": "मुख्य सामग्री पर जाएँ",
   "header.primaryNav": "मुख्य नेविगेशन",
@@ -33,6 +33,9 @@ export const hi: Record<MessageKey, string> = {
   "nav.track": "स्थिति",
   "nav.deficiencies": "कमियाँ",
   "nav.merit": "मेरिट",
+  "nav.stepDone": "(पूरा हुआ)",
+  "header.notifications": "सूचनाएँ",
+  "header.notificationsUnread": "सूचनाएँ: {n} अपठित",
 
   "common.pleaseWait": "कृपया प्रतीक्षा करें…",
   "common.loading": "लोड हो रहा है…",

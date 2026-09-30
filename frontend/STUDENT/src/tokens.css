@@ -11,18 +11,18 @@
   --c-primary: #316ab1;
   --c-amber: #f4a235;
   --c-success: #297c51;
-  --c-success-step: #38884c;
+  --c-success-step: #37854a; /* sampled #38884c, darkened for 4.5:1 */
   --c-warning: #f4a235;
   --c-error: #dd3c42;
   --c-error-tint: #fef0f1;
   --c-border: #d3e4f2;
-  --c-muted: #618098;
+  --c-muted: #516a7e; /* sampled #618098, darkened for 4.5:1 on tints */
 
   /* Derived (tints and text shades of the sampled hues; see contrast-check) */
-  --c-ink: var(--c-navy);
+  --c-ink: #32446b; /* = navy */
   --c-primary-hover: #28599a;
   --c-primary-tint: #e4eef8;
-  --c-success-tint: #e6f3ec;
+  --c-success-tint: #ebf5ef;
   --c-warning-text: #93540a;
   --c-warning-tint: #fdf1e1;
   --c-error-text: #c42d34;
@@ -31,4 +31,70 @@
   --c-on-navy-muted: #c9d3e4;
   --c-track: #dbe7f3;
   --c-focus: #316ab1;
+}
+
+/* Supporting colours (derived) */
+:root {
+  --c-subtle: #f6f9fc;
+  --c-border-strong: #7791a8; /* form borders: 3:1 on white and page */
+  --c-overlay-navy: rgba(50, 68, 107, 0.12);
+}
+
+/* Type scale (rem; 1rem = 16px). Nothing below 13px; essentials >= 14px. */
+:root {
+  --fs-caption: 0.8125rem; /* 13px, non-essential hints only */
+  --fs-sm: 0.875rem; /* 14px, secondary text */
+  --fs-body: 1rem; /* 16px */
+  --fs-title: 1.125rem; /* card title */
+  --fs-title-lg: 1.25rem; /* large card title */
+  --fs-section: 1.5rem; /* section heading */
+  --fs-h1: clamp(1.75rem, 1.4rem + 1.2vw, 2.5rem); /* page H1, weight 800 */
+  --fs-display: clamp(2.25rem, 1.8rem + 1.8vw, 3rem); /* rank, score, big numbers */
+  --lh-body: 1.6;
+  --lh-heading: 1.25;
+  --measure: 70ch;
+  --font-body: 'Noto Sans', system-ui, sans-serif;
+  --font-heading: 'Nunito', 'Noto Sans', system-ui, sans-serif;
+}
+/* Hindi: +1px and more line height; Devanagari first in the stack. */
+:root:lang(hi) {
+  --fs-caption: calc(0.8125rem + 1px);
+  --fs-sm: calc(0.875rem + 1px);
+  --fs-body: calc(1rem + 1px);
+  --fs-title: calc(1.125rem + 1px);
+  --fs-title-lg: calc(1.25rem + 1px);
+  --fs-section: calc(1.5rem + 1px);
+  --fs-h1: clamp(calc(1.75rem + 1px), 1.4rem + 1.2vw, calc(2.5rem + 1px));
+  --lh-body: 1.75;
+  --lh-heading: 1.4;
+  --font-body: 'Noto Sans Devanagari', 'Noto Sans', system-ui, sans-serif;
+  --font-heading: 'Noto Sans Devanagari', 'Nunito', system-ui, sans-serif;
+}
+
+/* 8px spacing scale, layout, shape */
+:root {
+  --sp-1: 0.25rem; /* 4 (half step, icon gaps only) */
+  --sp-2: 0.5rem; /* 8 */
+  --sp-3: 0.75rem; /* 12 (half step) */
+  --sp-4: 1rem; /* 16 */
+  --sp-5: 1.5rem; /* 24 */
+  --sp-6: 2rem; /* 32 */
+  --sp-7: 2.5rem; /* 40 */
+  --sp-8: 3rem; /* 48 */
+  --container: 1200px;
+  --gutter: 1rem;
+  --card-pad: 1.5rem;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-pill: 999px;
+  --accent-bar: 4px;
+  --tap: 44px;
+  --focus-ring: 0 0 0 3px var(--c-surface), 0 0 0 6px var(--c-focus);
+  --shadow-card: 0 1px 2px rgba(50, 68, 107, 0.06);
+}
+@media (min-width: 768px) {
+  :root { --gutter: 1.5rem; }
+}
+@media (max-width: 480px) {
+  :root { --card-pad: 1rem; }
 }

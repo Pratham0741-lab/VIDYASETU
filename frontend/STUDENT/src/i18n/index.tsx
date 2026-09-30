@@ -43,6 +43,8 @@ export interface I18n {
   tk: (key: string, fallback: string, vars?: Vars) => string;
   formatDate: (iso: string | null | undefined, withTime?: boolean) => string;
   formatNumber: (n: number) => string;
+  /** Amount in rupees, e.g. ₹37,500 (en-IN / hi-IN grouping). */
+  formatAmount: (n: number) => string;
 }
 
 const I18nContext = createContext<I18n | null>(null);
@@ -82,6 +84,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         });
       },
       formatNumber: (n) => n.toLocaleString(locale),
+      formatAmount: (n) => n.toLocaleString(locale, { style: 'currency', currency: 'INR', maximumFractionDigits: 2, minimumFractionDigits: 0 }),
     };
   }, [lang, setLang]);
 

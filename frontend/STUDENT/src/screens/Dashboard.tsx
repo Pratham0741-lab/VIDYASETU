@@ -4,6 +4,7 @@ import * as ep from "../api/endpoints";
 import type { Application, ApplicationDocuments, HistoryEntry, Notification, Stage } from "../api/responses";
 import { ApplicationPicker, useMyApplications } from "../applications";
 import { useAuth } from "../auth/AuthProvider";
+import { NOTIFICATIONS_CHANGED } from "../layout";
 import { useI18n, type MessageKey } from "../i18n";
 import { humanise } from "../i18n/labels";
 import { Button, Card, ErrorNote, Icon, ScreenTitle, Tag, type Tone } from "../ui";
@@ -114,6 +115,7 @@ export default function DashboardScreen() {
   const markRead = async (id: string) => {
     try {
       await ep.markNotificationRead(id);
+      window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
       setNotes((list) => list?.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n)) ?? null);
     } catch (e) {
       setError(e);
@@ -162,7 +164,7 @@ export default function DashboardScreen() {
           </div>
         </>
       )}
-      <Card className="timeline-card notifications-card">
+      <Card className="timeline-card notifications-card" id="notifications">
         <div className="card-heading"><div><h2>{t("dash.notesTitle")}</h2><p>{t("dash.notesText")}</p></div></div>
         {notes && appNotes.length === 0 && <p>{t("dash.notesEmpty")}</p>}
         {appNotes.length > 0 && (

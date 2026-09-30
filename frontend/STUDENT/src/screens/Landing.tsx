@@ -106,7 +106,7 @@ export default function LandingScreen() {
             <label><span className="field-icon">₹</span> {t("field.annualIncome")}
               <input value={income} onChange={(event) => setIncome(event.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder={t("checker.incomePlaceholder")} />
             </label>
-            <label><Icon name="document" size={17} /> {t("checker.level")}
+            <label><Icon name="document" /> {t("checker.level")}
               <select value={level} onChange={(event) => setLevel(event.target.value)}>
                 <option value="">{t("common.notStated")}</option>
                 {levels.map((l) => <option key={l} value={l}>{l}</option>)}
