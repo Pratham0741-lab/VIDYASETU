@@ -446,7 +446,7 @@ export const hi: Record<MessageKey, string> = {
   "result.help.HELD": "परिणाम से पहले आपका आवेदन समीक्षा के लिए रोका गया है।",
   "result.score": "मेरिट अंक",
   "result.howTitle": "आपका अंक कैसे लिया गया",
-  "result.howText": "मेरिट अंक योजना के मेरिट नियम से पढ़ा गया एक मान है; इसके अलग-अलग भाग नहीं हैं।",
+  "result.howText": "ठीक वैसा ही जैसा बैकएंड ने आपके आवेदन के लिए दर्ज किया है।",
   "result.scoreType": "अंक का प्रकार",
   "result.scoreValue": "अंक",
   "result.rule": "मेरिट नियम",
@@ -476,6 +476,8 @@ export const hi: Record<MessageKey, string> = {
   "result.raise": "आपत्ति दर्ज करें",
   "result.objectionRaised": "आपत्ति दर्ज हो गई",
   "result.objectionStatus": "स्थिति: {status}। निर्णय की सूचना आपको दी जाएगी।",
+  "result.congratsNoName": "बधाई हो",
+  "result.outOf": "{max} में से {value}",
 
   "login.eyebrow": "आवेदक लॉग इन",
   "login.title": "अपने आवेदन में लॉग इन करें",

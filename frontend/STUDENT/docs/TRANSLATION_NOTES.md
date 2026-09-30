@@ -142,3 +142,6 @@ without a key is shown humanised (underscores to spaces, sentence case), e.g.
 | `dash.consentsGiven` | {n} of {m} consents given | {m} में से {n} सहमतियाँ दी गईं |
 | `dash.manageConsent` | Review consent | सहमति देखें |
 | `dash.journeyStep` | Step {n} | चरण {n} |
+| `result.howText` (UI v2) | Exactly as the backend recorded it for your application. | ठीक वैसा ही जैसा बैकएंड ने आपके आवेदन के लिए दर्ज किया है। |
+| `result.congratsNoName` | Congratulations | बधाई हो |
+| `result.outOf` | {value} of {max} | {max} में से {value} |

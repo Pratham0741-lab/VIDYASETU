@@ -55,43 +55,6 @@
 .doc-row strong { font-size: var(--fs-sm); }
 .doc-row small { color: var(--c-muted); font-size: var(--fs-sm); }
 .documents-card .btn { width: 100%; margin-top: 18px; }
-.merit-hero { padding: 27px 32px; display: grid; grid-template-columns: 200px 1fr 150px; gap: 28px; align-items: center; color: var(--c-surface); background: linear-gradient(115deg, #0d513d, #087a57); border-radius: 10px; }
-.rank { border-right: 1px solid rgba(255,255,255,.25); }
-.rank small, .rank strong, .rank span { display: block; }
-.rank small, .score-total small { color: #eaf6f1; font-size: var(--fs-sm); letter-spacing: .1em; }
-.rank strong { font-size: var(--fs-display); line-height: 1.1; }
-.rank span { color: #eaf6f1; font-size: var(--fs-sm); }
-.merit-message .tag { color: #07583e; background: var(--c-surface); }
-.merit-message h2 { margin: 8px 0 3px; }
-.merit-message p { margin: 0; color: #eaf6f1; font-size: var(--fs-sm); }
-.score-total { text-align: right; }
-.score-total strong { font-size: var(--fs-display); }
-.score-total span { color: #eaf6f1; }
-.score-total small { display: block; }
-.merit-hero.is-not-selected { background: var(--c-navy); }
-.merit-hero.is-not-selected .rank small, .merit-hero.is-not-selected .score-total small, .merit-hero.is-not-selected .rank span, .merit-hero.is-not-selected .merit-message p, .merit-hero.is-not-selected .score-total span { color: #c3cfdb; }
-.merit-hero.is-not-selected .merit-message .tag { color: var(--c-navy); }
-.merit-hero.is-provisional { background: linear-gradient(115deg, #135a91, var(--c-primary)); }
-.merit-hero.is-provisional .rank small, .merit-hero.is-provisional .score-total small, .merit-hero.is-provisional .rank span, .merit-hero.is-provisional .merit-message p, .merit-hero.is-provisional .score-total span { color: #e6f0f8; }
-.merit-hero.is-provisional .merit-message .tag { color: #135a91; }
-.merit-grid { margin-top: 20px; display: grid; grid-template-columns: 1fr 360px; gap: 20px; }
-.merit-grid > .card, .side-stack .card { padding: 25px; }
-.score-bars { display: grid; gap: 18px; }
-.score-bars > div > div:first-child { display: flex; justify-content: space-between; font-size: var(--fs-sm); }
-.bar { height: 7px; margin-top: 7px; background: var(--c-page); border-radius: 5px; overflow: hidden; }
-.bar i { height: 100%; display: block; background: var(--c-primary); border-radius: 5px; }
-.tie-rule { margin-top: 24px; padding: 14px; display: flex; gap: 10px; color: var(--c-muted); background: var(--c-page); border-radius: 7px; }
-.tie-rule strong { color: var(--c-navy); font-size: var(--fs-sm); }
-.tie-rule p { margin: 3px 0 0; font-size: var(--fs-sm); }
-.side-stack { display: grid; gap: 20px; }
-.reservation > div { padding: 12px 0; border-top: 1px solid var(--c-border); position: relative; }
-.reservation small, .reservation strong { display: block; }
-.reservation small { color: var(--c-muted); font-size: var(--fs-sm); letter-spacing: .08em; }
-.reservation strong { margin-top: 3px; font-size: var(--fs-sm); }
-.reservation .tag { position: absolute; right: 0; top: 15px; }
-.objection h3 { margin: 8px 0 4px; }
-.objection p { color: var(--c-muted); font-size: var(--fs-sm); }
-.objection .btn { width: 100%; }
 .award-grid { display: grid; grid-template-columns: .9fr 1.1fr; gap: 20px; }
 .sanction-card { padding: 26px; display: grid; grid-template-columns: 1fr 180px; gap: 20px; overflow: hidden; }
 .sanction-copy h2 { margin: 10px 0 5px; }
@@ -141,7 +104,6 @@
 .detail-group { margin-bottom: 20px; }
 .detail-group h3 { margin: 0; font-size: var(--fs-body); }
 .detail-group > p { margin: 2px 0 10px; color: var(--c-muted); font-size: var(--fs-sm); }
-.objection-text { width: 100%; margin-top: 7px; padding: 10px 13px; color: var(--c-navy); background: var(--c-subtle); border: 1px solid var(--c-border-strong); border-radius: 6px; font: inherit; resize: vertical; }
 .vidya-hero { height: 317px; color: var(--c-surface); /* Local gradient replaces the remote Unsplash photo (offline build). */ background-image: radial-gradient(circle at 78% 30%, #2f6f96 0%, rgba(47,111,150,0) 55%), linear-gradient(120deg, #0c1735 0%, #16325a 55%, #1d5a7e 100%); background-position: center 44%; background-size: cover; position: relative; overflow: hidden; }
 .vidya-overlay { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(12,23,53,.94) 0%, rgba(20,30,56,.82) 45%, rgba(10,34,55,.45) 100%); }
 .vidya-content { max-width: 1360px; height: 100%; margin: auto; padding: 17px 34px 18px; position: relative; }
@@ -209,16 +171,13 @@
 .vidya-metrics strong { font-size: var(--fs-sm); }
 .vidya-metrics small { color: #6f6228; font-size: var(--fs-sm); }
 @media (max-width: 950px) {
-  .checker-grid, .content-sidebar, .verification-grid, .merit-grid, .award-grid, .lower-grid { grid-template-columns: 1fr; }
+  .checker-grid, .content-sidebar, .verification-grid, .award-grid, .lower-grid { grid-template-columns: 1fr; }
   .vidya-checker-grid { grid-template-columns: 1fr; }
   .vidya-hero { height: auto; min-height: 360px; }
   .vidya-metrics { grid-template-columns: 1fr 1fr; padding-top: 12px; padding-bottom: 12px; }
 }
 @media (max-width: 650px) {
   .wizard { grid-template-columns: 1fr 1fr; }
-  .merit-hero { grid-template-columns: 1fr; }
-  .rank { border: 0; }
-  .score-total { text-align: left; }
   .sanction-card { grid-template-columns: 1fr; }
   .vidya-content { padding-left: 18px; padding-right: 18px; }
   .vidya-title h1 { font-size: var(--fs-display); }
@@ -307,4 +266,40 @@
 .notifications-card .check-row p { margin-top: var(--sp-1); color: var(--c-muted); font-size: var(--fs-sm); }
 @media (max-width: 599px) {
   .id-block { width: 100%; padding: var(--sp-4) 0 0; border-left: 0; border-top: 1px solid var(--c-on-navy-muted); }
+}
+
+/* ------------------------------------------------ Merit (UI v2, selected.png) */
+.merit-hero { padding: var(--sp-5) var(--sp-6); display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--sp-5); align-items: center; color: var(--c-on-navy); background: var(--c-primary); border-radius: var(--radius); }
+.merit-hero.is-final { background: var(--c-success); }
+.merit-hero.is-not-selected { background: var(--c-navy); }
+.merit-hero .merit-label { display: block; font-size: var(--fs-sm); font-weight: 700; }
+.merit-hero .merit-note { display: block; color: var(--c-on-navy); font-size: var(--fs-sm); }
+.merit-hero.is-not-selected .merit-note, .merit-hero.is-not-selected .merit-message p { color: var(--c-on-navy-muted); }
+.rank { padding-right: var(--sp-5); border-right: 1px solid var(--c-on-navy-muted); }
+.rank strong, .score-total strong { display: block; font-family: var(--font-heading); font-size: var(--fs-display); font-weight: 800; line-height: 1.1; }
+.merit-message { display: grid; gap: var(--sp-2); justify-items: start; }
+.merit-message h2 { color: inherit; font-size: var(--fs-title-lg); }
+.merit-message p { color: var(--c-on-navy); }
+.score-total { text-align: right; }
+.merit-grid .kv { margin-bottom: var(--sp-4); }
+.score-parts { list-style: none; margin: 0 0 var(--sp-4); padding: 0; display: grid; gap: var(--sp-4); }
+.score-parts li { max-width: none; }
+.score-part-head { display: flex; justify-content: space-between; gap: var(--sp-3); }
+.score-part-head span { color: var(--c-muted); font-size: var(--fs-sm); font-weight: 700; }
+.bar { height: 8px; margin-top: var(--sp-2); background: var(--c-track); border-radius: var(--radius-pill); overflow: hidden; }
+.bar i { height: 100%; display: block; background: var(--c-primary); border-radius: var(--radius-pill); }
+.decision-note { padding: var(--sp-4); display: flex; gap: var(--sp-3); color: var(--c-ink); background: var(--c-subtle); border: 1px solid var(--c-border); border-radius: var(--radius-sm); }
+.decision-note > .icon { color: var(--c-primary); }
+.decision-note p { margin-top: var(--sp-1); color: var(--c-muted); font-size: var(--fs-sm); }
+.reservation { margin-top: var(--sp-3); }
+.objection { display: grid; gap: var(--sp-2); }
+.objection h3 { display: flex; align-items: center; gap: var(--sp-2); }
+.objection h3 .icon { color: var(--c-primary); }
+.objection label { margin: var(--sp-2) 0 0; }
+.objection-text { margin-top: 0; resize: vertical; }
+.objection .btn { width: 100%; }
+@media (max-width: 767px) {
+  .merit-hero { grid-template-columns: minmax(0, 1fr); padding: var(--sp-5); }
+  .rank { padding: 0 0 var(--sp-4); border-right: 0; border-bottom: 1px solid var(--c-on-navy-muted); }
+  .score-total { text-align: left; }
 }
