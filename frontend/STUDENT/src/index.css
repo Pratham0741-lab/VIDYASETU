@@ -383,6 +383,9 @@ footer > span { font-size: 9px; }
 .scheme-refresh small { color: var(--slate-500); font-size: 11px; }
 .scheme-note { margin-top: 18px; color: var(--slate-500); font-size: 11px; }
 .detail-actions { margin: -8px 0 22px; padding-top: 0; }
+.landing-browse { padding-top: 40px; padding-bottom: 44px; }
+.landing-browse .view-schemes { margin-top: 18px; padding: 0; text-align: center; }
+.scheme-table .tag.tag-blue { margin-top: 4px; color: var(--blue); }
 .detail-group { margin-bottom: 20px; }
 .detail-group h3 { margin: 0; font-size: 15px; }
 .detail-group > p { margin: 2px 0 10px; color: var(--slate-500); font-size: 12px; }

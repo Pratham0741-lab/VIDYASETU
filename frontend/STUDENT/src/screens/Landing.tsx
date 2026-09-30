@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import * as ep from "../api/endpoints";
 import type { EligibilityCheck, SchemeResult } from "../api/responses";
 import { useAuth } from "../auth/AuthProvider";
 import { useI18n } from "../i18n";
 import { categoryLabel } from "../i18n/labels";
-import { allResults, incomeLimit, optionsFor, useSchemeCatalogue } from "../schemes";
+import { allResults, incomeLimit, optionsFor, useSchemeCatalogue, useSchemeList } from "../schemes";
+import { SchemeCard } from "./Schemes";
 import { Button, Card, ErrorNote, Icon, Tag, type Tone } from "../ui";
 
 const OUTCOME_TONE: Record<string, Tone> = { ELIGIBLE: "green", INELIGIBLE: "red", INDETERMINATE: "amber" };
@@ -13,6 +14,9 @@ const OUTCOME_TONE: Record<string, Tone> = { ELIGIBLE: "green", INELIGIBLE: "red
 export default function LandingScreen() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [params] = useSearchParams();
+  const preselected = params.get("scheme");
+  const { schemes: browse, error: browseError } = useSchemeList();
   const i18n = useI18n();
   const { t, tk, formatNumber } = i18n;
   const { status } = useAuth();
@@ -25,8 +29,8 @@ export default function LandingScreen() {
   const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
-    if (location.hash === "#checker") document.getElementById("checker")?.scrollIntoView({ behavior: "smooth" });
-  }, [location.hash]);
+    if (location.hash === "#checker" || preselected) document.getElementById("checker")?.scrollIntoView({ behavior: "smooth" });
+  }, [location.hash, preselected]);
 
   const categories = useMemo(() => optionsFor(schemes ?? [], "category"), [schemes]);
   const levels = useMemo(() => optionsFor(schemes ?? [], "education_level"), [schemes]);
@@ -123,12 +127,12 @@ export default function LandingScreen() {
             {schemes && schemes.length > 0 && (
               <div className="scheme-table">
                 <div className="scheme-header"><strong>{t("checker.colScheme")}</strong><strong>{t("checker.colRule")}</strong><strong>{t("checker.colStatus")}</strong></div>
-                {schemes.map((s) => {
+                {[...schemes].sort((a, b) => Number(b.code === preselected) - Number(a.code === preselected)).map((s) => {
                   const r = results.get(s.code);
                   const limit = incomeLimit(s.form);
                   return (
                     <div key={s.versionId}>
-                      <div><strong>{s.name}</strong><small>{t("checker.version", { code: s.code, version: s.version })}</small></div>
+                      <div><strong>{s.name}</strong><small>{t("checker.version", { code: s.code, version: s.version })}</small>{s.code === preselected && <Tag tone="blue">{t("checker.selectedScheme")}</Tag>}</div>
                       <div><span>{limit !== null ? t("checker.incomeLimit", { limit: `₹${formatNumber(limit)}` }) : t("checker.noIncomeLimit")}</span><small>{t("checker.fieldCount", { count: s.form?.fields.length ?? 0 })}</small></div>
                       {r ? <Tag tone={OUTCOME_TONE[r.outcome] ?? "gray"}><Icon name={r.outcome === "ELIGIBLE" ? "check" : "warning"} /> {tk(`outcome.${r.outcome}`, r.outcome)}</Tag> : <Tag tone="gray">{t("checker.notChecked")}</Tag>}
                     </div>
@@ -152,6 +156,22 @@ export default function LandingScreen() {
           </Card>
         </div>
       </main>
+      <section className="landing-main landing-browse" aria-labelledby="browse-title">
+        <div className="section-intro">
+          <span className="eyebrow">{t("schemes.eyebrow")}</span>
+          <h2 id="browse-title">{t("landing.browseTitle")}</h2>
+          <p>{t("landing.browseText")}</p>
+        </div>
+        <ErrorNote error={browse ? null : browseError} />
+        {!browse && !browseError && <p>{t("common.loading")}</p>}
+        {browse && browse.length === 0 && <p>{t("schemes.emptyText")}</p>}
+        {browse && browse.length > 0 && (
+          <div className="scheme-grid">
+            {[...browse].sort((a, b) => a.scheme_name.localeCompare(b.scheme_name)).slice(0, 6).map((s) => <SchemeCard key={s.scheme_version_id} scheme={s} />)}
+          </div>
+        )}
+        <div className="view-schemes"><Link to="/schemes" className="btn btn-secondary">{t("landing.viewAll", { n: browse?.length ?? 0 })} <Icon name="arrow" /></Link></div>
+      </section>
       <section className="vidya-metrics" aria-label={t("landing.factsLabel")}>
         <div><span><Icon name="document" /></span><div><strong>{t("landing.m1Title")}</strong><small>{t("landing.m1Text")}</small></div></div>
         <div><span><Icon name="upload" /></span><div><strong>{t("landing.m2Title")}</strong><small>{t("landing.m2Text")}</small></div></div>

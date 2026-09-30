@@ -114,3 +114,7 @@ without a key is shown humanised (underscores to spaces, sentence case), e.g.
 | `formField.course_name` | Course | पाठ्यक्रम |
 | `formField.is_hosteller` | Living in a hostel | छात्रावास में रहते हैं |
 | `slot.admission_offer_letter` | Admission offer letter | प्रवेश प्रस्ताव पत्र |
+| `landing.browseTitle` | Browse all schemes | सभी योजनाएँ देखें |
+| `landing.browseText` | Every scheme open for applications, as the backend lists it. Open one to see what it asks for. | आवेदन के लिए खुली हर योजना, जैसे बैकएंड उसे सूचीबद्ध करता है। उसमें क्या माँगा जाता है, यह देखने के लिए उसे खोलें। |
+| `landing.viewAll` | View all schemes ({n}) | सभी योजनाएँ देखें ({n}) |
+| `checker.selectedScheme` | Selected scheme | चुनी गई योजना |
