@@ -46,3 +46,27 @@ without a key is shown humanised (underscores to spaces, sentence case), e.g.
 - `history.action.mark_defective` (hi) changed to "सुधार के लिए लौटाया गया" so
   it matches `stage.DEFECTIVE`; the timeline shows an action label only when
   it differs from the stage name (F1-C).
+
+## Keys added in F1-D (machine-drafted Hindi, unreviewed)
+
+| Key | English | Hindi |
+|---|---|---|
+| `schemes.eyebrow` | Scholarship schemes | छात्रवृत्ति योजनाएँ |
+| `schemes.title` | Schemes open for applications | आवेदन के लिए खुली योजनाएँ |
+| `schemes.description` | Active scheme versions, as the VIDYASETU backend lists them. The list is refreshed every 30 seconds while you use the portal. | सक्रिय योजना संस्करण, जैसे VIDYASETU बैकएंड उन्हें सूचीबद्ध करता है। पोर्टल उपयोग करते समय सूची हर 30 सेकंड में ताज़ा होती है। |
+| `schemes.version` | Version {n} | संस्करण {n} |
+| `schemes.fromTo` | From {from} to {to} | {from} से {to} तक |
+| `schemes.fromOpen` | From {from} · no end date | {from} से · कोई अंतिम तिथि नहीं |
+| `schemes.viewDetails` | View details | विवरण देखें |
+| `schemes.checkMine` | Check my eligibility | मेरी पात्रता जाँचें |
+| `schemes.updatedAt` | Updated {time} | अपडेट: {time} |
+| `schemes.refresh` | Refresh | रीफ़्रेश करें |
+| `schemes.refreshWait` | Refresh in {s} s | {s} सेकंड में रीफ़्रेश |
+| `schemes.search` | Search by name or code | नाम या कोड से खोजें |
+| `schemes.searchPlaceholder` | e.g. NFST or fellowship | जैसे NFST या fellowship |
+| `schemes.count` | {n} scheme(s) | {n} योजना(एँ) |
+| `schemes.emptyTitle` | No scheme is open right now | अभी कोई योजना खुली नहीं है |
+| `schemes.emptyText` | The backend lists no active scheme version. Please check again later. | बैकएंड किसी सक्रिय योजना संस्करण को सूचीबद्ध नहीं करता। कृपया बाद में फिर देखें। |
+| `schemes.noMatchTitle` | No scheme matches your search | आपकी खोज से कोई योजना मेल नहीं खाती |
+| `schemes.noMatchText` | Nothing matches “{q}”. Try another name or code. | “{q}” से कुछ मेल नहीं खाता। कोई और नाम या कोड आज़माएँ। |
+| `schemes.englishOnly` | Scheme names are shown as the backend returns them (English only). | योजनाओं के नाम वैसे ही दिखाए गए हैं जैसे बैकएंड देता है (केवल अंग्रेज़ी में)। |

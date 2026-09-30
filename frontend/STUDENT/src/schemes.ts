@@ -111,18 +111,18 @@ export function useSchemeList() {
   useEffect(() => {
     void loadSchemeList();
   }, []);
-  // Re-render while the 10-second floor runs, so a Refresh button can enable itself.
-  const wait = msUntilAllowed(now);
+  // Re-render every second while the 10-second floor runs, so a Refresh button can count down and enable itself.
+  const wait = msUntilAllowed();
   useEffect(() => {
     if (wait <= 0) return;
-    const id = setTimeout(() => setNow(Date.now()), wait + 50);
+    const id = setTimeout(() => setNow(Date.now()), Math.min(wait, 1000) + 20);
     return () => clearTimeout(id);
-  }, [wait, snap.requestedAt]);
+  }, [now, wait, snap.requestedAt]);
   const refresh = useCallback(() => {
     void loadSchemeList(true).then(() => setNow(Date.now()));
     setNow(Date.now());
   }, []);
-  return { schemes: snap.schemes, error: snap.error, loading: snap.loading, fetchedAt: snap.fetchedAt, refresh, refreshIn: msUntilAllowed(now) };
+  return { schemes: snap.schemes, error: snap.error, loading: snap.loading, fetchedAt: snap.fetchedAt, refresh, refreshIn: wait };
 }
 
 // ------------------------------------------------------------ form schemas

@@ -47,6 +47,7 @@ function Header({ landing }: { landing: boolean }) {
   const { t } = useI18n();
   const { status, profile, logout } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const signedIn = status === "signed-in";
   const doLogout = async () => {
     await logout();
@@ -62,7 +63,7 @@ function Header({ landing }: { landing: boolean }) {
         <Brand />
         <nav className="top-links" aria-label={t("header.primaryNav")}>
           <button onClick={() => navigate("/")} className={landing ? "active-link" : ""}>{t("header.home")}</button>
-          <button onClick={() => navigate("/#checker")}>{t("header.schemes")}</button>
+          <button onClick={() => navigate("/schemes")} className={pathname.startsWith("/schemes") ? "active-link" : ""} aria-current={pathname.startsWith("/schemes") ? "page" : undefined}>{t("header.schemes")}</button>
           {landing && <button onClick={() => document.getElementById("checker")?.scrollIntoView({ behavior: "smooth" })}>{t("header.checkEligibility")}</button>}
           <button onClick={() => navigate("/dashboard")}>{t("header.track")}</button>
         </nav>
