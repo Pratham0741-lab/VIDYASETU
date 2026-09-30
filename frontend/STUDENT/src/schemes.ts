@@ -1,14 +1,24 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import * as ep from "./api/endpoints";
-import type { EligibilityCheck, FormSchema, SchemeResult } from "./api/responses";
+import type { ActiveScheme, EligibilityCheck, FormSchema, SchemeResult } from "./api/responses";
 
 /**
- * The schemes an applicant can see: the public GET /schemes list (active
- * scheme versions, ordered by code), plus each version's public form schema
- * for its fields, options, limits and document checklist. Loaded once per
- * page load and kept in memory (the routes are throttled per IP). No scheme
- * is filtered out here.
+ * The public scheme list (GET /schemes) and each version's public form schema.
+ *
+ * List: kept in memory for LIST_TTL_MS; opening the landing page or the
+ * Schemes section refetches it once the TTL has passed, and refresh()
+ * bypasses the TTL. Never more than one GET /schemes per MIN_INTERVAL_MS
+ * (the route allows 60 per minute per IP). When several active versions of
+ * one scheme_code are returned, only the highest version_no is kept.
+ *
+ * Form schemas: a published scheme version is immutable, so each is fetched
+ * once per page load, keyed by scheme_version_id.
+ *
+ * Nothing is filtered out besides older versions of the same code.
  */
+export const LIST_TTL_MS = 30_000;
+export const MIN_INTERVAL_MS = 10_000;
+
 export interface SchemeEntry {
   code: string;
   name: string;
@@ -24,45 +34,172 @@ export function allResults(check: EligibilityCheck): SchemeResult[] {
   return [...check.eligible, ...check.not_eligible, ...check.indeterminate];
 }
 
-let cache: Promise<SchemeEntry[]> | null = null;
-
-async function loadCatalogue(): Promise<SchemeEntry[]> {
-  const { schemes } = await ep.listSchemes();
-  const forms = await Promise.all(schemes.map((s) => ep.getFormSchema(s.scheme_code, s.version_no).catch(() => null)));
-  return schemes.map((s, i) => ({
-    code: s.scheme_code,
-    name: s.scheme_name,
-    version: s.version_no,
-    versionId: s.scheme_version_id,
-    effectiveFrom: s.effective_from,
-    effectiveTo: s.effective_to,
-    form: forms[i],
-  }));
+/** Highest version_no per scheme_code (the API may return several active versions of one code). */
+export function latestVersions(schemes: ActiveScheme[]): ActiveScheme[] {
+  const best = new Map<string, ActiveScheme>();
+  for (const s of schemes) {
+    const current = best.get(s.scheme_code);
+    if (!current || s.version_no > current.version_no) best.set(s.scheme_code, s);
+  }
+  return [...best.values()];
 }
 
-export function useSchemeCatalogue() {
-  const [schemes, setSchemes] = useState<SchemeEntry[] | null>(null);
+// ------------------------------------------------------------------ list store
+interface ListState {
+  schemes: ActiveScheme[] | null;
+  error: unknown;
+  loading: boolean;
+  /** When the current list was fetched (0 = never). */
+  fetchedAt: number;
+  /** When the last request was sent (0 = never): the 10-second floor. */
+  requestedAt: number;
+}
+
+let state: ListState = { schemes: null, error: null, loading: false, fetchedAt: 0, requestedAt: 0 };
+let inflight: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+
+function setState(patch: Partial<ListState>) {
+  state = { ...state, ...patch };
+  listeners.forEach((l) => l());
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+/** Milliseconds until another GET /schemes may be sent (0 = now). */
+export function msUntilAllowed(now = Date.now()): number {
+  return state.requestedAt ? Math.max(0, state.requestedAt + MIN_INTERVAL_MS - now) : 0;
+}
+
+/**
+ * Loads the list when it is missing or older than the TTL (or always, with
+ * force), unless a request is already running or the 10-second floor has
+ * not passed. Returns without a request in those cases.
+ */
+export function loadSchemeList(force = false): Promise<void> {
+  if (inflight) return inflight;
+  const now = Date.now();
+  const fresh = state.schemes !== null && now - state.fetchedAt < LIST_TTL_MS;
+  if ((fresh && !force) || msUntilAllowed(now) > 0) return Promise.resolve();
+  setState({ loading: true, requestedAt: now });
+  inflight = ep
+    .listSchemes()
+    .then(
+      (r) => setState({ schemes: latestVersions(r.schemes), error: null, fetchedAt: Date.now() }),
+      (e) => setState({ error: e }),
+    )
+    .finally(() => {
+      inflight = null;
+      setState({ loading: false });
+    });
+  return inflight;
+}
+
+/**
+ * The scheme list for a screen: loads it on mount (TTL rules above) and
+ * offers refresh() (bypasses the TTL, keeps the 10-second floor).
+ * `refreshIn` is the wait in ms before refresh() may send a request.
+ */
+export function useSchemeList() {
+  const snap = useSyncExternalStore(subscribe, () => state);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    void loadSchemeList();
+  }, []);
+  // Re-render while the 10-second floor runs, so a Refresh button can enable itself.
+  const wait = msUntilAllowed(now);
+  useEffect(() => {
+    if (wait <= 0) return;
+    const id = setTimeout(() => setNow(Date.now()), wait + 50);
+    return () => clearTimeout(id);
+  }, [wait, snap.requestedAt]);
+  const refresh = useCallback(() => {
+    void loadSchemeList(true).then(() => setNow(Date.now()));
+    setNow(Date.now());
+  }, []);
+  return { schemes: snap.schemes, error: snap.error, loading: snap.loading, fetchedAt: snap.fetchedAt, refresh, refreshIn: msUntilAllowed(now) };
+}
+
+// ------------------------------------------------------------ form schemas
+const formCache = new Map<string, Promise<FormSchema | null>>();
+
+/** A version's form schema; one request per scheme_version_id per page load (errors are retried next time). */
+export function loadFormSchema(s: Pick<ActiveScheme, "scheme_code" | "version_no" | "scheme_version_id">): Promise<FormSchema | null> {
+  let p = formCache.get(s.scheme_version_id);
+  if (!p) {
+    p = ep.getFormSchema(s.scheme_code, s.version_no).catch(() => {
+      formCache.delete(s.scheme_version_id);
+      return null;
+    });
+    formCache.set(s.scheme_version_id, p);
+  }
+  return p;
+}
+
+/** One version's form schema with its own loading and error state (the error keeps the requestId). */
+export function useFormSchema(s: Pick<ActiveScheme, "scheme_code" | "version_no" | "scheme_version_id"> | null) {
+  const [form, setForm] = useState<FormSchema | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
+  const versionId = s?.scheme_version_id ?? null;
   useEffect(() => {
+    setForm(null);
+    setError(null);
+    if (!s) return;
     let live = true;
-    if (!cache) cache = loadCatalogue();
-    cache.then(
-      (s) => live && setSchemes(s),
-      (e) => {
-        cache = null;
-        if (live) setError(e);
+    ep.getFormSchema(s.scheme_code, s.version_no).then(
+      (f) => {
+        if (!live) return;
+        formCache.set(s.scheme_version_id, Promise.resolve(f));
+        setForm(f);
       },
+      (e) => live && setError(e),
     );
     return () => {
       live = false;
     };
-  }, [attempt]);
-  const retry = () => {
-    setError(null);
-    setAttempt((n) => n + 1);
-  };
-  return { schemes, error, retry };
+  }, [versionId, attempt]);
+  return { form, error, retry: () => setAttempt((n) => n + 1) };
+}
+
+/**
+ * List plus form schemas: what the landing checker and the application
+ * scheme picker need. Keeps the old { schemes, error, retry } shape.
+ */
+export function useSchemeCatalogue() {
+  const { schemes: list, error, refresh } = useSchemeList();
+  const [forms, setForms] = useState<Map<string, FormSchema | null> | null>(null);
+  useEffect(() => {
+    if (!list) return;
+    let live = true;
+    Promise.all(list.map((s) => loadFormSchema(s).then((f) => [s.scheme_version_id, f] as const))).then((pairs) => {
+      if (live) setForms(new Map(pairs));
+    });
+    return () => {
+      live = false;
+    };
+  }, [list]);
+  const schemes = useMemo<SchemeEntry[] | null>(() => {
+    if (!list || !forms) return null;
+    return [...list]
+      .sort((a, b) => a.scheme_name.localeCompare(b.scheme_name))
+      .map((s) => ({
+        code: s.scheme_code,
+        name: s.scheme_name,
+        version: s.version_no,
+        versionId: s.scheme_version_id,
+        effectiveFrom: s.effective_from,
+        effectiveTo: s.effective_to,
+        form: forms.get(s.scheme_version_id) ?? null,
+      }));
+  }, [list, forms]);
+  // A failed refresh keeps the last good list on screen; the error shows only while there is no list.
+  return { schemes, error: list ? null : error, retry: refresh };
 }
 
 /** Income limit of a scheme from its form schema (a limit on family_income_annual), if any. */
