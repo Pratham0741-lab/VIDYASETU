@@ -115,7 +115,7 @@ export default function MeritScreen() {
               <h2 id="merit-message">
                 {outcome === "SELECTED" ? (firstName ? t("result.congrats", { name: firstName }) : t("result.congratsNoName")) : t("result.application", { no: result.application_no })}
               </h2>
-              {result.not_selected_reason ? <p>{t("result.reason", { reason: tk(`reason.${result.not_selected_reason}`, result.not_selected_reason) })}</p> : tk(`result.help.${outcome}`, "") && <p>{tk(`result.help.${outcome}`, "")}</p>}
+              {result.not_selected_reason ? <p>{t("result.reason", { reason: tk(`reason.${result.not_selected_reason}`, result.not_selected_reason) })}</p> : (outcome !== "NOT_SELECTED" || canObject) && tk(`result.help.${outcome}`, "") && <p>{tk(`result.help.${outcome}`, "")}</p>}
             </div>
             {scoreValue !== null && (
               <div className="score-total"><strong className="num">{formatNumber(scoreValue)}</strong><span className="merit-label">{t("result.score")}</span></div>

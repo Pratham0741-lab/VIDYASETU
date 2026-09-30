@@ -303,3 +303,5 @@
   .rank { padding: 0 0 var(--sp-4); border-right: 0; border-bottom: 1px solid var(--c-on-navy-muted); }
   .score-total { text-align: left; }
 }
+.merit-grid .reservation { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.merit-grid .reservation dd { margin-bottom: var(--sp-3); }
