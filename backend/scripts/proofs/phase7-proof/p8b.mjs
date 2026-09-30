@@ -1,0 +1,14 @@
+import { call, login, state } from './p7.mjs';
+const V = JSON.parse(process.env.VERSIONS);
+const mark = (s) => console.log(`\n>>> ${s}`);
+const t = await login(state.D.email);
+mark('POST /applications (POST_MATRIC v2, declared education level that fails the rule) -> gate INELIGIBLE');
+const bad = await call('POST', '/applications', { scheme_version_id: V.POST_MATRIC, academic_year: '2026-27', declared: { education_level: 'Class VIII' } }, t);
+console.log(`application ${bad.application_no}: ${bad.eligibility_gate.outcome} -> ${bad.current_stage}`);
+const ino = await login('ino.ranchi7@example.org');
+mark('FAILING request: INO /verify on the INDETERMINATE (flagged) application without confirming review -> must emit nothing');
+const f = await call('POST', `/applications/${state.D.nos}/verify`, {}, ino, { raw: true });
+console.log(`HTTP ${f.status} ${f.body.details?.reason}`);
+mark('INO /mark-defective on the eligible application -> workflow.transition with deficiency');
+const md = await call('POST', `/applications/${state.D.ok}/mark-defective`, { code: 'DEF_INCOME_UNSIGNED', title: 'Income certificate unsigned', description: 'Upload a signed income certificate.' }, ino, { raw: true });
+console.log(`HTTP ${md.status} ${md.body.transition.from_stage} -> ${md.body.transition.to_stage} deficiency=${md.body.deficiency_id}`);

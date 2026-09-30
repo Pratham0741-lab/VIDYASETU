@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+test
+openapi.json
+*.tsbuildinfo
+.env
+.env.*
+npm-debug.log*
+Dockerfile
+.dockerignore

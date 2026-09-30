@@ -1,0 +1,251 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SchemeVersionConfig",
+  "description": "Canonical schema for evaluable predicate-based scholarship scheme configurations (MoTA Portal)",
+  "type": "object",
+  "required": [
+    "rules",
+    "benefits",
+    "required_documents",
+    "fund_sharing_ratio"
+  ],
+  "properties": {
+    "rules": {
+      "type": "array",
+      "description": "List of evaluable eligibility predicates and operational rules",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "expr",
+          "params",
+          "doc_refs",
+          "message_key"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique identifier for the rule within this scheme version"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "eligibility",
+              "benefit_note",
+              "operational",
+              "unmapped"
+            ],
+            "description": "Rule category classification"
+          },
+          "expr": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Predicate expression to be evaluated by the Phase 4 rules engine"
+          },
+          "params": {
+            "type": "object",
+            "description": "Key-value parameters injected into the predicate expression"
+          },
+          "doc_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Document types required to substantiate this rule"
+          },
+          "message_key": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Localization error/message key triggered when evaluation fails"
+          },
+          "verification": {
+            "type": "object",
+            "description": "Provenance and human-in-the-loop verification audit details",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": ["VERIFIED", "PENDING_AUDIT", "FLAGGED"]
+              },
+              "source_clause": {
+                "type": "string"
+              },
+              "audited_by": {
+                "type": ["string", "null"]
+              },
+              "audited_at": {
+                "type": ["string", "null"]
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true,
+        "if": {
+          "properties": {
+            "type": {
+              "const": "eligibility"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "verification"
+          ],
+          "properties": {
+            "verification": {
+              "type": "object",
+              "required": [
+                "status"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "benefits": {
+      "type": "array",
+      "description": "Decomposed financial and non-financial entitlements",
+      "items": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "condition": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "amount_monthly": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "amount_annual": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "currency": {
+            "type": "string"
+          },
+          "duration_months": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "disbursement_channel": {
+            "type": "string"
+          },
+          "components": {
+            "type": [
+              "object",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "required_documents": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of all mandatory and discretionary documents for the scheme version"
+    },
+    "fund_sharing_ratio": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Centre:State funding ratio e.g. 75:25, 60:40, 100:0, or null for 100% Central Sector"
+    },
+    "selection_policy": {
+      "type": "object",
+      "description": "Phase 16 (M51): the version's declared selection basis. Absent = the platform maps the version's known operational rules (NOS, NFST) or selects every approved applicant.",
+      "required": ["basis"],
+      "additionalProperties": false,
+      "properties": {
+        "basis": { "type": "string", "enum": ["NO_COMPETITION", "RANKED_NO_CAP", "QUOTA"] },
+        "merit": {
+          "type": "object",
+          "required": ["rule_id", "direction"],
+          "additionalProperties": false,
+          "properties": {
+            "rule_id": { "type": "string", "minLength": 1, "description": "An operational rule of this version whose computed value is the merit score." },
+            "direction": { "type": "string", "enum": ["HIGHER_IS_BETTER", "LOWER_IS_BETTER"] }
+          }
+        },
+        "pools": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["key", "seats"],
+            "additionalProperties": false,
+            "properties": {
+              "key": { "type": "string", "enum": ["ST_OTHERS", "PVTG"] },
+              "seats": { "type": "integer", "minimum": 0 },
+              "female_percentage": { "type": "number", "minimum": 0, "maximum": 100 },
+              "rounding": { "type": "string", "enum": ["HALF_UP", "FLOOR", "CEIL"] }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "basis": { "const": "NO_COMPETITION" } } },
+          "then": { "not": { "anyOf": [{ "required": ["merit"] }, { "required": ["pools"] }] } }
+        },
+        {
+          "if": { "properties": { "basis": { "const": "RANKED_NO_CAP" } } },
+          "then": { "required": ["merit"], "not": { "required": ["pools"] } }
+        },
+        {
+          "if": { "properties": { "basis": { "const": "QUOTA" } } },
+          "then": { "required": ["merit", "pools"] }
+        }
+      ]
+    },
+    "workflow": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Name of the scrutiny workflow definition this version is processed by (e.g. vidyasetu-scrutiny/v1). Absent = the platform's one workflow."
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "source_document": {
+          "type": "string"
+        },
+        "source_url": {
+          "type": "string"
+        },
+        "extraction_confidence": {
+          "type": "string"
+        },
+        "extraction_notes": {
+          "type": "string"
+        },
+        "data_verified": {
+          "type": "boolean",
+          "description": "Human verification flag: must remain false until audited against tribal.nic.in PDFs"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

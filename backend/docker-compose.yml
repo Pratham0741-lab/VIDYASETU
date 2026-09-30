@@ -1,0 +1,342 @@
+# VIDYASETU local stack (Phase 0).
+#
+# Networks
+#   backend  internal: true -> no route to the internet. postgres, redis,
+#            minio, minio-init, ml, api.
+#   edge     normal bridge. api (published port), mailpit (web UI + SMTP),
+#            and minio (console port only; see note on the minio service).
+#
+# Only these host ports are published, all bound to 127.0.0.1:
+#   api 3000, mailpit UI 8025, minio console 9001 (overridable in .env).
+#
+# All configuration comes from .env (copy .env.example). `${VAR:?}` makes
+# compose refuse to start when a required variable is missing.
+
+name: vidyasetu
+
+# Phase 17 (Part A): container logs rotate - json-file, at most 3 files of
+# 10 MB per container (about 30 MB each). This is the only retention of
+# container logs on a host; nothing ships them elsewhere.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:16.15-bookworm
+    # Phase 17 (M60): the server log carries no row values. terse drops the
+    # DETAIL / HINT / CONTEXT lines ("Failing row contains (...)", "Key
+    # (email)=(...)"); log_min_error_statement=panic keeps the failed
+    # statement's text out of error entries; no statement is logged and bound
+    # parameters are never echoed. An ERROR's own message can still quote the
+    # offending value ('invalid input syntax for type uuid: "..."'), so
+    # log_min_messages=log leaves ERROR (and WARNING) entries out of the server
+    # log entirely; LOG, FATAL and PANIC (startup, checkpoints, connection
+    # failures) are still written. The client, and the api's redacted logs,
+    # still get every error. To debug locally, override these with e.g.
+    # `-c log_min_messages=warning -c log_error_verbosity=verbose
+    # -c log_min_error_statement=error` in a compose override file - never
+    # with real data.
+    command:
+      - postgres
+      - -c
+      - log_min_messages=log
+      - -c
+      - log_error_verbosity=terse
+      - -c
+      - log_min_error_statement=panic
+      - -c
+      - log_statement=none
+      - -c
+      - log_parameter_max_length_on_error=0
+      - -c
+      - log_parameter_max_length=0
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  redis:
+    image: redis:7.4.11-bookworm
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+    # Password passed via env, not argv literals in the compose file.
+    # TODO(queues phase): enable AOF persistence + a named volume for BullMQ.
+    command: ["sh", "-c", "exec redis-server --requirepass \"$${REDIS_PASSWORD}\" --save '' --appendonly no"]
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$${REDIS_PASSWORD}\" redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+
+  # Official minio/minio images are no longer published on Docker Hub/quay.
+  # pgsty/minio is a community-maintained build of MinIO with pinned release
+  # tags. Swap for an internally mirrored image if your policy requires it.
+  minio:
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    restart: unless-stopped
+    logging: *default-logging
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
+    volumes:
+      - minio-data:/data
+    # NOTE: Docker does not publish ports of containers attached only to an
+    # internal network, so minio also joins `edge` purely to expose its
+    # console on 127.0.0.1. The S3 API port (9000) is never published.
+    networks:
+      - backend
+      - edge
+    ports:
+      - "127.0.0.1:${MINIO_CONSOLE_HOST_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  # One-shot: creates the documents bucket (private) and a least-privilege
+  # service account for the api, then exits 0. Safe to re-run.
+  minio-init:
+    image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
+    restart: "no"
+    logging: *default-logging
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_API_ACCESS_KEY: ${MINIO_API_ACCESS_KEY:?set MINIO_API_ACCESS_KEY in .env}
+      MINIO_API_SECRET_KEY: ${MINIO_API_SECRET_KEY:?set MINIO_API_SECRET_KEY in .env}
+      MINIO_BUCKET_DOCUMENTS: ${MINIO_BUCKET_DOCUMENTS:?set MINIO_BUCKET_DOCUMENTS in .env}
+    networks:
+      - backend
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eu
+        mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"
+        mc mb --ignore-existing "local/$${MINIO_BUCKET_DOCUMENTS}"
+        mc anonymous set none "local/$${MINIO_BUCKET_DOCUMENTS}"
+        cat > /tmp/documents-rw.json <<EOF
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": ["s3:GetBucketLocation", "s3:ListBucket"],
+              "Resource": ["arn:aws:s3:::$${MINIO_BUCKET_DOCUMENTS}"]
+            },
+            {
+              "Effect": "Allow",
+              "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+              "Resource": ["arn:aws:s3:::$${MINIO_BUCKET_DOCUMENTS}/*"]
+            }
+          ]
+        }
+        EOF
+        mc admin policy create local documents-rw /tmp/documents-rw.json
+        mc admin user add local "$${MINIO_API_ACCESS_KEY}" "$${MINIO_API_SECRET_KEY}"
+        if ! mc admin user info local "$${MINIO_API_ACCESS_KEY}" | grep -q documents-rw; then
+          mc admin policy attach local documents-rw --user "$${MINIO_API_ACCESS_KEY}"
+        fi
+        echo "minio-init: bucket '$${MINIO_BUCKET_DOCUMENTS}' and api service account ready"
+
+  # One-shot: applies Prisma migrations, then seeds scheme data, then exits 0.
+  # Same pattern as minio-init. Uses the api image's `migrate` build stage
+  # (prisma CLI + tsx); Postgres stays unpublished. Re-run any time with:
+  #   docker compose run --rm db-migrate
+  # Other DB scripts run the same way, e.g.:
+  #   docker compose run --rm db-migrate npx tsx scripts/demo-pii-roundtrip.ts
+  db-migrate:
+    build:
+      context: ./api
+      target: migrate
+    image: vidyasetu-api-migrate:0.1.0
+    restart: "no"
+    logging: *default-logging
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Owner role: needs DDL rights and creates / configures app_user.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD in .env}
+      PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:?set PII_ENCRYPTION_KEY in .env (api/scripts/generate-pii-key.ts)}
+    networks:
+      - backend
+
+  mailpit:
+    image: axllent/mailpit:v1.31.2
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+      MP_MAX_MESSAGES: "5000"
+    networks:
+      - edge
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_HOST_PORT:-8025}:8025"
+
+  ml:
+    build:
+      context: ./ml
+    image: vidyasetu-ml:0.1.0
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      ML_ENVIRONMENT: ${ML_ENVIRONMENT:-production}
+      ML_LOG_LEVEL: ${ML_LOG_LEVEL:-INFO}
+      ML_SERVICE_NAME: vidyasetu-ml
+      ML_MODELS_DIR: /app/models
+    # backend ONLY (internal network): no internet access, no published port.
+    networks:
+      - backend
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Healthcheck is defined in ml/Dockerfile (GET /health).
+
+  api:
+    build:
+      context: ./api
+    image: vidyasetu-api:0.1.0
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      db-migrate:
+        condition: service_completed_successfully
+      ml:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      API_PORT: "3000"
+      LOG_LEVEL: ${API_LOG_LEVEL:-info}
+      CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS in .env}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
+      BODY_LIMIT: ${BODY_LIMIT:-1mb}
+      # Runtime role app_user (created by migration 20260926030000): not a
+      # superuser, not an owner, subject to RLS and the audit_logs REVOKE.
+      DATABASE_URL: postgresql://app_user:${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD in .env}@postgres:5432/${POSTGRES_DB}?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_API_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_API_SECRET_KEY}
+      MINIO_BUCKET_DOCUMENTS: ${MINIO_BUCKET_DOCUMENTS}
+      ML_BASE_URL: http://ml:8000
+      ML_TIMEOUT_MS: ${ML_TIMEOUT_MS:-5000}
+      # Phase 7: 'mock' = documented MockMlService fixtures (no real image analysis);
+      # 'real' = the ml service's document endpoints (not built yet).
+      ML_MODE: ${ML_MODE:-mock}
+      UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:-10485760}
+      DOC_REVIEW_THRESHOLDS: ${DOC_REVIEW_THRESHOLDS:-{"default":0.85}}
+      DOC_VALUE_TOLERANCE: ${DOC_VALUE_TOLERANCE:-0.05}
+      DOC_CONSISTENCY_MIN_CONFIDENCE: ${DOC_CONSISTENCY_MIN_CONFIDENCE:-0.8}
+      OBJECTION_WINDOW_DAYS: ${OBJECTION_WINDOW_DAYS:-15}
+      # Phase 13C deficiency loop: default days to fix an item; certificate
+      # validity in months per canonical document type.
+      DEFICIENCY_DEADLINE_DAYS: ${DEFICIENCY_DEADLINE_DAYS:-15}
+      DOCUMENT_VALIDITY_MONTHS: ${DOCUMENT_VALIDITY_MONTHS:-{"INCOME_CERTIFICATE":12}}
+      # Phase 13D: languages applicants may choose (en and hi have notification texts).
+      SUPPORTED_LANGUAGES: ${SUPPORTED_LANGUAGES:-en,hi,sat}
+      # Phase 13E: committee approvals a provisional selection list needs.
+      SELECTION_LIST_APPROVALS_REQUIRED: ${SELECTION_LIST_APPROVALS_REQUIRED:-1}
+      CONSENT_NOTICE_VERSION: ${CONSENT_NOTICE_VERSION:-2026-10-v1}
+      CONSENT_PURPOSES: ${CONSENT_PURPOSES:-application_processing,government_verification,notifications}
+      CONSENT_REQUIRED_PURPOSES: ${CONSENT_REQUIRED_PURPOSES:-application_processing,government_verification}
+      RETENTION_ENABLED: ${RETENTION_ENABLED:-false}
+      RETENTION_DRY_RUN: ${RETENTION_DRY_RUN:-true}
+      RETENTION_INTERVAL_MS: ${RETENTION_INTERVAL_MS:-86400000}
+      RETENTION_NOTIFICATIONS_DAYS: ${RETENTION_NOTIFICATIONS_DAYS:-365}
+      RETENTION_REFRESH_TOKENS_DAYS: ${RETENTION_REFRESH_TOKENS_DAYS:-30}
+      RETENTION_DRAFTS_DAYS: ${RETENTION_DRAFTS_DAYS:-180}
+      AADHAAR_MODE: ${AADHAAR_MODE:-mock}
+      SLA_SWEEP_ENABLED: ${SLA_SWEEP_ENABLED:-true}
+      SLA_SWEEP_INTERVAL_MS: ${SLA_SWEEP_INTERVAL_MS:-900000}
+      SCHEME_AUTHOR_ROLES: ${SCHEME_AUTHOR_ROLES:-SUPER_ADMIN,MINISTRY_OFFICER}
+      SCHEME_PUBLISHER_ROLES: ${SCHEME_PUBLISHER_ROLES:-SUPER_ADMIN,MINISTRY_OFFICER}
+      # Phase 10 integration adapters: 'mock' = documented in-process mocks;
+      # 'real' = the external service (not configured in this build: fails closed).
+      DIGILOCKER_MODE: ${DIGILOCKER_MODE:-mock}
+      PFMS_MODE: ${PFMS_MODE:-mock}
+      NSP_MODE: ${NSP_MODE:-mock}
+      # PFMS mock only: {"<application_no>": "INSUFFICIENT_BALANCE|ACCOUNT_INVALID|TIMEOUT|PENDING"}
+      PFMS_MOCK_SCENARIOS: ${PFMS_MOCK_SCENARIOS:-{}}
+      # Phase 11 fraud detection: HMAC key for the exact-match index (32-byte
+      # base64, separate from PII_ENCRYPTION_KEY) and the institution-surge rule.
+      FRAUD_MATCH_KEY: ${FRAUD_MATCH_KEY:?set FRAUD_MATCH_KEY in .env (32-byte base64, not the PII key)}
+      FRAUD_SURGE_WINDOW_DAYS: ${FRAUD_SURGE_WINDOW_DAYS:-7}
+      FRAUD_SURGE_BASELINE_WINDOWS: ${FRAUD_SURGE_BASELINE_WINDOWS:-8}
+      FRAUD_SURGE_MULTIPLE: ${FRAUD_SURGE_MULTIPLE:-3}
+      FRAUD_SURGE_MIN_COUNT: ${FRAUD_SURGE_MIN_COUNT:-5}
+      HEALTH_CHECK_TIMEOUT_MS: ${HEALTH_CHECK_TIMEOUT_MS:-3000}
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      MAIL_FROM: ${MAIL_FROM:-no-reply@vidyasetu.local}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET in .env (at least 32 random characters)}
+      JWT_ACCESS_TTL_SECONDS: ${JWT_ACCESS_TTL_SECONDS:-900}
+      REFRESH_TOKEN_TTL_SECONDS: ${REFRESH_TOKEN_TTL_SECONDS:-604800}
+      PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:?set PII_ENCRYPTION_KEY in .env (api/scripts/generate-pii-key.ts)}
+    networks:
+      - backend
+      - edge
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-3000}:3000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Healthcheck is defined in api/Dockerfile (GET /health/live).
+
+networks:
+  backend:
+    driver: bridge
+    internal: true
+  edge:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  minio-data:

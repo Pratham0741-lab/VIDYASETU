@@ -1,0 +1,13 @@
+import { call, login } from './lib.mjs';
+import { psql } from './psql.mjs';
+const flags = () => psql(`SELECT md5(string_agg(id||flag_type||severity||status||dedup_key||coalesce(application_id::text,''), ',' ORDER BY id)) || ' (' || count(*) || ' flags)' FROM fraud_flags;`);
+const index = () => psql(`SELECT md5(string_agg(applicant_id||field||source||coalesce(document_id::text,'')||match_hmac, ',' ORDER BY applicant_id, field, document_id)) || ' (' || count(*) || ' index rows)' FROM pii_match_index;`);
+const f0 = flags(), i0 = index();
+console.log(`before: flags ${f0}; index ${i0}`);
+const t = Date.now();
+const r = await call('POST', '/fraud/backfill', undefined, await login('admin.p11@example.org'), { raw: true });
+console.log(`POST /api/v1/fraud/backfill (SUPER_ADMIN): HTTP ${r.status} ${JSON.stringify(r.body)} in ${((Date.now() - t) / 1000).toFixed(1)}s`);
+const f1 = flags(), i1 = index();
+console.log(`after:  flags ${f1}; index ${i1}`);
+console.log(`flags identical: ${f0 === f1}; index identical: ${i0 === i1}`);
+console.log(psql(`SELECT 'index rows re-written by the rebuild (indexed_at in the last 5 min): '||count(*) FROM pii_match_index WHERE indexed_at > now() - interval '5 minutes';`));

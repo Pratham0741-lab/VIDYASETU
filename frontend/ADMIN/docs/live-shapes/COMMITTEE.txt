@@ -1,0 +1,149 @@
+# Live response shapes for COMMITTEE (2026-09-29T16:28:58.024Z)
+# field: type [(absent in n/m)] [values=[...] for enum-like fields only]
+
+## GET /auth/me -> HTTP 200
+  accountId: string
+  role: string  values=[COMMITTEE]
+  officerId: string
+  jurisdictionState: string
+  jurisdictionDistrict: null
+
+## GET /officers/me/preferences -> HTTP 200
+  officer_id: string
+  preferred_language: string
+  is_default: boolean
+  supported_languages: array of string
+  updated_at: null
+
+## GET /applications/queue -> HTTP 403
+  error: code=FORBIDDEN reason=role_not_permitted
+
+## GET /applications/queue?fraud=HIGH -> HTTP 403
+  error: code=FORBIDDEN reason=role_not_permitted
+
+## GET /applications/queue?fraud=ANY -> HTTP 403
+  error: code=FORBIDDEN reason=role_not_permitted
+
+## GET /applications/queue?needs_eligibility_review=true -> HTTP 403
+  error: code=FORBIDDEN reason=role_not_permitted
+
+## /applications/:id, /documents: skipped (queue empty or not permitted)
+
+## GET /analytics/fraud -> HTTP 403
+  error: code=FORBIDDEN reason=role_not_permitted
+
+## GET /analytics/funnel -> HTTP 403
+  error: code=FORBIDDEN reason=role_not_permitted
+
+## GET /analytics/sla -> HTTP 403
+  error: code=FORBIDDEN reason=role_not_permitted
+
+## GET /analytics/verification-quality -> HTTP 403
+  error: code=FORBIDDEN reason=role_not_permitted
+
+## GET /selection-lists -> HTTP 200
+  lists: array of object
+    id: string
+    selection_run_id: string
+    scheme_code: string
+    academic_year: string
+    status: string  values=[DRAFT, FINAL_PUBLISHED, PROVISIONAL_PUBLISHED]
+    approvals_required: number
+    objection_window_days: number
+    provisional_published_at: string|null
+    window_closes_at: string|null
+    window_closed_at: string|null
+    window_closed_early: boolean
+    final_published_at: string|null
+    created_at: string
+
+## GET /selection-lists/:id -> HTTP 200
+  id: string
+  selection_run_id: string
+  scheme_code: string
+  academic_year: string
+  status: string  values=[FINAL_PUBLISHED]
+  approvals_required: number
+  objection_window_days: number
+  provisional_published_at: string
+  window_closes_at: string
+  window_closed_at: string
+  window_closed_early: boolean
+  final_published_at: string
+  created_at: string
+  list_decisions: array of object
+    kind: string
+    reason: null|string
+    officer_id: string
+    created_at: string
+  entries_in_scope: number
+  entries: array of object
+    id: string
+    application_id: string
+    computed_outcome: string  values=[SELECTED]
+    computed_rank: null
+    not_selected_reason: null
+    vertical_category: string
+    horizontal_reservation: null
+    committee_decision: null
+    final_outcome: string  values=[SELECTED]
+    decisions: array (empty)
+    application_no: string
+
+## GET /analytics/fairness -> HTTP 200
+  meta: object
+    view: string
+    scheme: string
+    academic_year: string
+    cohort: string
+    selected_means: string
+    scope: string
+    fixtures: string
+    small_count_threshold: number
+    suppression: string
+    institution_type: string  values=[derived from the institution code family (AISHE U- / C- / S-, 11-digit U-DISE, else OTHER); no institution registry exists]
+    max_buckets_per_dimension: number
+    generated_at: string
+  total: object
+    applied: number
+    selected: number
+    selection_rate: number
+  dimensions: object
+    category: array of object
+      bucket: string
+      applied: number
+      selected: number
+      selection_rate: number
+    gender: array of object
+      bucket: string
+      applied: number
+      selected: string
+      selection_rate: string
+    pwd_status: array of object
+      bucket: string
+      applied: number
+      selected: number
+      selection_rate: number
+    district: array of object
+      bucket: string
+      applied: number
+      selected: number|string
+      selection_rate: number|string
+    institution_type: array of object
+      bucket: string
+      applied: number
+      selected: number
+      selection_rate: number
+
+## GET /grievances -> HTTP 403
+  error: code=FORBIDDEN reason=role_not_permitted
+
+## GET /audit/verify -> HTTP 403
+  error: code=FORBIDDEN reason=role_not_permitted
+
+## GET /authorization-denials -> HTTP 403
+  error: code=FORBIDDEN reason=role_not_permitted
+
+## GET /document-access -> HTTP 403
+  error: code=FORBIDDEN reason=role_not_permitted
+

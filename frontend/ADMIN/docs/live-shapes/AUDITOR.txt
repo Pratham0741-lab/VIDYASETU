@@ -1,0 +1,350 @@
+# Live response shapes for AUDITOR (2026-09-29T16:30:08.505Z)
+# field: type [(absent in n/m)] [values=[...] for enum-like fields only]
+
+## GET /auth/me -> HTTP 200
+  accountId: string
+  role: string  values=[AUDITOR]
+  officerId: string
+  jurisdictionState: string
+  jurisdictionDistrict: null
+
+## GET /officers/me/preferences -> HTTP 200
+  officer_id: string
+  preferred_language: string
+  is_default: boolean
+  supported_languages: array of string
+  updated_at: null
+
+## GET /applications/queue -> HTTP 403
+  error: code=FORBIDDEN reason=role_not_permitted
+
+## GET /applications/queue?fraud=HIGH -> HTTP 403
+  error: code=FORBIDDEN reason=role_not_permitted
+
+## GET /applications/queue?fraud=ANY -> HTTP 403
+  error: code=FORBIDDEN reason=role_not_permitted
+
+## GET /applications/queue?needs_eligibility_review=true -> HTTP 403
+  error: code=FORBIDDEN reason=role_not_permitted
+
+## /applications/:id, /documents: skipped (queue empty or not permitted)
+
+## GET /analytics/fraud -> HTTP 200
+  meta: object
+    view: string
+    cohort: string
+    from: string
+    to: string
+    scheme: null
+    academic_year: null
+    fixtures: string
+    read_only_transaction: boolean
+    scope: string
+    small_count_threshold: number
+    generated_at: string
+    content: string
+  application_flags: array of object
+    flag_type: string  values=[DUPLICATE_FILE_HASH, SHARED_BANK_ACCOUNT]
+    severity: string  values=[HIGH]
+    status: string  values=[OPEN]
+    flags: number
+    applications: number
+  institution_flags: array (empty)
+  held_applications: object
+    total: number
+    by_stage: array of object
+      stage: string  values=[INO_VERIFIED]
+      applications: number
+
+## GET /analytics/funnel -> HTTP 200
+  meta: object
+    view: string
+    cohort: string
+    from: string
+    to: string
+    scheme: null
+    academic_year: null
+    fixtures: string
+    read_only_transaction: boolean
+    scope: string
+    small_count_threshold: number
+    generated_at: string
+  steps: array of object
+    step: string
+    count: number
+    of: null|string
+    base: null|number
+    conversion: null|number
+  current: object
+    pending: number
+    under_review: number
+    defective: number
+    rejected: number
+  held: object
+    count: number
+    note: string
+  state_dbt: object
+    count: number
+    status: string  values=[SELECTED_DISBURSEMENT_BY_STATE_DBT]
+    note: string
+
+## GET /analytics/sla -> HTTP 200
+  meta: object
+    view: string
+    cohort: string
+    from: string
+    to: string
+    scheme: null
+    academic_year: null
+    fixtures: string
+    read_only_transaction: boolean
+    scope: string
+    small_count_threshold: number
+    generated_at: string
+    sla_source: string
+  stages: array of object
+    stage: string  values=[DEFECTIVE, DNO_VERIFIED, INO_VERIFIED, MINISTRY_APPROVED, SNO_VERIFIED]
+    sla_days: number
+    completed_stays: number
+    median_hours: number|null
+    p90_hours: number|null
+    completed_past_sla: number
+    in_stage_now: number
+    in_stage_median_age_hours: number
+    in_stage_past_sla: number
+    in_stage_past_sla_share: number
+  longest_waits: array of string
+
+## GET /analytics/verification-quality -> HTTP 200
+  meta: object
+    view: string
+    cohort: string
+    from: string
+    to: string
+    scheme: null
+    academic_year: null
+    fixtures: string
+    read_only_transaction: boolean
+    scope: string
+    small_count_threshold: number
+    generated_at: string
+    meaning: string
+    document_type: string  values=[the checklist slot mapped to a canonical document type (UNMAPPED when the slot has none); DIGILOCKER rows are issuer data, not machine-read (no auto_accept_rate)]
+    officer_actions: string
+    read: string
+    suppression: string
+  rows: array of object
+    scheme_code: string
+    document_type: string  values=[BANK_PASSBOOK, BONAFIDE, CASTE_CERTIFICATE, FEE_RECEIPT, INCOME_CERTIFICATE, MARKSHEET, OFFER_LETTER, UNMAPPED]
+    source: string
+    uploaded: number
+    rejected_unreadable: number
+    processed: number
+    extraction_failed: number
+    auto_verified: number
+    sent_to_review: number
+    awaiting_officer: number
+    officer_decided: number
+    officer_corrected: number
+    type_overridden: number
+    overridden: number
+    auto_accept_rate: number
+    override_rate: null
+
+## GET /selection-lists -> HTTP 200
+  lists: array of object
+    id: string
+    selection_run_id: string
+    scheme_code: string
+    academic_year: string
+    status: string  values=[DRAFT, FINAL_PUBLISHED, PROVISIONAL_PUBLISHED]
+    approvals_required: number
+    objection_window_days: number
+    provisional_published_at: string|null
+    window_closes_at: string|null
+    window_closed_at: string|null
+    window_closed_early: boolean
+    final_published_at: string|null
+    created_at: string
+
+## GET /selection-lists/:id -> HTTP 200
+  id: string
+  selection_run_id: string
+  scheme_code: string
+  academic_year: string
+  status: string  values=[FINAL_PUBLISHED]
+  approvals_required: number
+  objection_window_days: number
+  provisional_published_at: string
+  window_closes_at: string
+  window_closed_at: string
+  window_closed_early: boolean
+  final_published_at: string
+  created_at: string
+  list_decisions: array of object
+    kind: string
+    reason: null|string
+    officer_id: string
+    created_at: string
+  entries_in_scope: number
+  entries: array of object
+    id: string
+    application_id: string
+    computed_outcome: string  values=[SELECTED]
+    computed_rank: null
+    not_selected_reason: null
+    vertical_category: string
+    horizontal_reservation: null
+    committee_decision: null
+    final_outcome: string  values=[SELECTED]
+    decisions: array (empty)
+    application_no: string
+
+## GET /analytics/fairness -> HTTP 200
+  meta: object
+    view: string
+    scheme: string
+    academic_year: string
+    cohort: string
+    selected_means: string
+    scope: string
+    fixtures: string
+    small_count_threshold: number
+    suppression: string
+    institution_type: string  values=[derived from the institution code family (AISHE U- / C- / S-, 11-digit U-DISE, else OTHER); no institution registry exists]
+    max_buckets_per_dimension: number
+    generated_at: string
+  total: object
+    applied: number
+    selected: number
+    selection_rate: number
+  dimensions: object
+    category: array of object
+      bucket: string
+      applied: number
+      selected: number
+      selection_rate: number
+    gender: array of object
+      bucket: string
+      applied: number
+      selected: string
+      selection_rate: string
+    pwd_status: array of object
+      bucket: string
+      applied: number
+      selected: number
+      selection_rate: number
+    district: array of object
+      bucket: string
+      applied: number
+      selected: number|string
+      selection_rate: number|string
+    institution_type: array of object
+      bucket: string
+      applied: number
+      selected: number
+      selection_rate: number
+
+## GET /grievances -> HTTP 403
+  error: code=FORBIDDEN reason=role_not_permitted
+
+## GET /audit/verify -> HTTP 200
+  ok: boolean
+  checked_at: string
+  legacy: object
+    rows: number
+    first_created_at_us: string
+    last_created_at_us: string
+    digest: string
+    checkpoint_rows: number
+    checkpoint_digest: string
+    matches_checkpoint: boolean
+    vouches_for: string
+    cannot_vouch_for: string
+  chain: object
+    rows: number
+    first_seq: string
+    last_seq: string
+    last_hash: string
+    head_seq: string
+    head_hash: string
+    vouches_for: string
+    cannot_vouch_for: string
+  first_break: null
+  denials: object
+    ok: boolean
+    legacy: object
+      rows: number
+      first_occurred_at_us: string
+      last_occurred_at_us: string
+      digest: string
+      checkpoint_rows: number
+      checkpoint_digest: string
+      matches_checkpoint: boolean
+      vouches_for: string
+      cannot_vouch_for: string
+    chain: object
+      rows: number
+      first_seq: string
+      last_seq: string
+      last_hash: string
+      head_seq: string
+      head_hash: string
+      vouches_for: string
+      cannot_vouch_for: string
+    first_break: null
+
+## GET /authorization-denials -> HTTP 200
+  denials: array of object
+    id: string
+    occurred_at: string
+    actor_user_id: string
+    actor_id: string|null
+    actor_type: string  values=[APPLICANT, OFFICER]
+    actor_role: string  values=[APPLICANT, AUDITOR, COMMITTEE, DISTRICT_NODAL_OFFICER, INSTITUTE_NODAL_OFFICER, STATE_NODAL_OFFICER]
+    action_attempted: string
+    subject_type: null|string  values=[application, correction_request, document, notification, officer, sanction_order]
+    subject_id: null|string
+    denial_reason: string
+    details: object
+      route: string
+      method: string
+      origin: string
+      params: object
+        id: string (absent in 33/50)
+        itemId: string (absent in 48/50)
+      reason: string (absent in 10/50)
+      error_code: string (absent in 3/50)
+      state: string (absent in 48/50)
+      allowed: array of string (absent in 49/50)
+      transition: string (absent in 48/50)
+      permitted: array of string (absent in 49/50)
+      guard: string (absent in 47/50)
+      table: string (absent in 47/50)
+    jurisdiction_state: string
+    jurisdiction_district: null|string
+    jurisdiction_source: string
+    ip_address: string
+    request_id: string
+    prev_hash: string
+    record_hash: string
+    seq: string
+    hash_version: number
+    hash_input: string
+
+## GET /document-access -> HTTP 200
+  accesses: array of object
+    id: string
+    accessed_at: string
+    actor_account_id: string
+    actor_role: string  values=[APPLICANT, STATE_NODAL_OFFICER]
+    access_kind: string
+    resource_type: string  values=[application_documents, document]
+    resource_id: string
+    application_id: string
+    document_id: null|string
+    route: string
+    request_id: string
+    jurisdiction_state: string
+    jurisdiction_district: string
+

@@ -1,0 +1,21 @@
+# VIDYASETU ml - test image (Phase 13A).
+#
+# Layered on the PRODUCTION image (same OS packages, Tesseract language data,
+# Python dependencies and app code), adding only pytest and the tests. The
+# production image is not changed. Build-time pip needs the network; the
+# tests themselves run with the network disabled:
+#
+#   docker compose build ml
+#   docker build -f ml/Dockerfile.test -t vidyasetu-ml-test:local ml
+#   docker run --rm --network none vidyasetu-ml-test:local
+#
+# (or: cd api && npm run test:ml)
+ARG ML_IMAGE=vidyasetu-ml:0.1.0
+FROM ${ML_IMAGE}
+
+RUN pip install --no-cache-dir "pytest>=8.0.0" "pytest-asyncio>=0.23.0"
+
+COPY pyproject.toml ./pyproject.toml
+COPY tests ./tests
+
+CMD ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "-rf", "tests"]

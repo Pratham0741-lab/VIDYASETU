@@ -1,0 +1,15 @@
+import { call, login, save, state } from './lib.mjs';
+import { execSync } from 'node:child_process';
+const psql = (sql) => execSync(`docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "${sql}"'`, { cwd: 'D:/PROJECTS/SIH_FELLOWSHIP/vidyasetu' }).toString().trim();
+const t3 = await login(state.P.T3.email);
+const notice = (await call('GET', '/notifications', undefined, t3)).notifications.find((n) => n.template_key === 'selection.not_selected');
+const runRef = notice.body.match(/Selection run reference: ([0-9a-f-]{36})/)[1];
+const g = await call('POST', '/grievances', { application_id: state.P.T3.applicationId, subject_type: 'SELECTION_OBJECTION', selection_run_id: runRef, description: 'Please re-examine how the female earmark displaced my seat.' }, t3, { raw: true });
+console.log(`T3 objection: HTTP ${g.status} grievance=${g.body.id} status=${g.body.status} selection_run_id=${g.body.selection_run_id}`);
+const min = await login('ministry.dn@example.org');
+const before = psql("SELECT count(*) || ' rows, head=' || coalesce((SELECT left(record_hash,16) FROM audit_logs ORDER BY created_at DESC, id DESC LIMIT 1),'-') FROM audit_logs");
+const c = await call('POST', `/selections/${state.P.T4.selectionId}/confirm`, {}, min, { raw: true });
+const after = psql("SELECT count(*) || ' rows, head=' || coalesce((SELECT left(record_hash,16) FROM audit_logs ORDER BY created_at DESC, id DESC LIMIT 1),'-') FROM audit_logs");
+console.log(`\nconfirm T4 WITHOUT override (selection ${state.P.T4.selectionId}):\n  HTTP ${c.status} ${JSON.stringify(c.body)}`);
+console.log(`audit_logs immediately before: ${before}\naudit_logs immediately after:  ${after}`);
+state.p2 = { selectionId: state.P.T4.selectionId, requestId: c.body.requestId }; save();

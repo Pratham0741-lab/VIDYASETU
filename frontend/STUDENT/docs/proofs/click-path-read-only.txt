@@ -1,0 +1,13 @@
+# node scripts/click-path.mjs --read-only (2026-09-30, account E2E_*: deficiency demo applicant)
+API http://localhost:3000/api/v1
+PASS  login                                          HTTP 200  fields=access_token,token_type,expires_in,refresh_token,refresh_expires_in
+PASS  auth/me role check                             HTTP 200  role=APPLICANT
+PASS  applicant profile                              HTTP 200  preferred_language=en supported=en/hi/sat
+PASS  GET /schemes without a token                   HTTP 200  schemes=5
+PASS  own applications                               HTTP 200  count=1
+PASS  history of own application                     HTTP 200  entries=2 dated=2 actions=eligibility_passed,mark_defective
+PASS  history without a token -> 401                 HTTP 401 UNAUTHORIZED reason=missing_token
+PASS  selection result (published or 404)            HTTP 404 NOT_FOUND reason=no_published_result
+PASS  logout                                         HTTP 204
+
+click-path (read-only): all steps passed

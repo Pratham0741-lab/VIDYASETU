@@ -1,0 +1,1137 @@
+// VIDYASETU Prisma schema.
+// Models and migrations merged from the standalone DB/ project (Prisma 5.22 era).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------
+// 0. Authentication (Phase 2): login accounts and refresh tokens
+// ---------------------------------------------------------
+
+model Account {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String   @unique // stored lower-case (DB CHECK accounts_email_lowercase_check)
+  password_hash String // argon2id encoded hash
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  officer        Officer?
+  applicant      Applicant?
+  refresh_tokens RefreshToken[]
+  notifications  Notification[]
+
+  @@map("accounts")
+}
+
+model RefreshToken {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  account_id String    @db.Uuid
+  account    Account   @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  token_hash String    @unique // SHA-256 of the opaque token; the raw token is never stored
+  expires_at DateTime  @db.Timestamptz(6)
+  revoked_at DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([account_id])
+  @@map("refresh_tokens")
+}
+
+// ---------------------------------------------------------
+// 1. Core IAM & Organization Models
+// ---------------------------------------------------------
+
+model Role {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique // e.g. SUPER_ADMIN, MINISTRY_OFFICER, STATE_NODAL_OFFICER, DISTRICT_NODAL_OFFICER, INSTITUTE_NODAL_OFFICER
+  description String?
+  officers    Officer[]
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@map("roles")
+}
+
+model Officer {
+  id                    String   @id @default(uuid()) @db.Uuid
+  user_id               String   @unique @db.Uuid // Login identity: FK to accounts.id
+  account               Account  @relation(fields: [user_id], references: [id], onDelete: Restrict)
+  email                 String   @unique
+  name                  String
+  phone                 String?
+  role_id               String   @db.Uuid
+  role                  Role     @relation(fields: [role_id], references: [id])
+  jurisdiction_state    String? // null for Central/Ministry officers
+  jurisdiction_district String? // null for State or Central officers
+  institution_code      String? // AISHE / U-DISE / NCVT code for Institute Nodal Officers
+  is_active             Boolean  @default(true)
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime @updatedAt @db.Timestamptz(6)
+
+  assigned_applications     Application[]        @relation("AssignedOfficer")
+  decision_records          DecisionRecord[]
+  deficiencies_flagged      Deficiency[]
+  deficiency_items_created  DeficiencyItem[]
+  scores_evaluated          Score[]
+  audit_logs                AuditLog[]
+  extractions_confirmed     DocumentExtraction[] @relation("ExtractionConfirmedBy")
+  selections_confirmed      Selection[]          @relation("SelectionConfirmedBy")
+  sanction_orders_generated SanctionOrder[]      @relation("SanctionOrderGeneratedBy")
+  disbursements_initiated   Disbursement[]       @relation("DisbursementInitiatedBy")
+  disbursements_reconciled  Disbursement[]       @relation("DisbursementReconciledBy")
+  renewals_endorsed         Renewal[]            @relation("RenewalEndorsedBy")
+  renewals_decided          Renewal[]            @relation("RenewalDecidedBy")
+  grievances_resolved       Grievance[]          @relation("GrievanceResolvedBy")
+
+  @@index([jurisdiction_state, jurisdiction_district])
+  @@map("officers")
+}
+
+// ---------------------------------------------------------
+// 2. Applicant & Scheme Models
+// ---------------------------------------------------------
+
+model Applicant {
+  id                    String    @id @default(uuid()) @db.Uuid
+  user_id               String?   @unique @db.Uuid // Login identity: FK to accounts.id (set on self-registration)
+  account               Account?  @relation(fields: [user_id], references: [id], onDelete: Restrict)
+  first_name            String
+  last_name             String
+  email                 String?
+  phone                 String?
+  gender                String?
+  dob                   DateTime? @db.Date
+  category              String // e.g. "ST", "PVTG"
+  pvtg_group            String? // e.g. "Birhor", "Baiga", "Chenchu"
+  is_disabled           Boolean   @default(false)
+  disability_type       String?
+  disability_percentage Float?
+  domicile_state        String
+  domicile_district     String?
+
+  // Sensitive PII fields stored as encrypted binary (@db.ByteA).
+  // Encrypted transparently at the application layer via Prisma Client Extension
+  // in lib/crypto/pii-extension.ts using AES-256-GCM, not via DB functions.
+  caste_cert_number Bytes
+  income            Bytes
+  bank_account      Bytes
+
+  /// Phase 13C: notice language (ISO 639 code; DB CHECK).
+  preferred_language String                   @default("en")
+  profile_changes    ApplicantProfileChange[]
+  applications       Application[]
+  grievances         Grievance[]
+  created_at         DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime                 @updatedAt @db.Timestamptz(6)
+
+  @@index([category, domicile_state])
+  @@map("applicants")
+}
+
+model Scheme {
+  id                String   @id @default(uuid()) @db.Uuid
+  code              String   @unique // e.g. PRE_MATRIC, POST_MATRIC, TOP_CLASS, NFST, NOS
+  name              String
+  department        String // e.g. "Scholarship Division, Ministry of Tribal Affairs"
+  description       String?
+  type              String // "CENTRALLY_SPONSORED" | "CENTRAL_SECTOR"
+  portal_url        String?
+  is_active         Boolean  @default(true)
+  /// Phase 12 (M16, D2): "SCHEDULED_BY_PLATFORM" | "FORWARDED_TO_STATE" (DB CHECK)
+  disbursement_mode String   @default("SCHEDULED_BY_PLATFORM")
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime @updatedAt @db.Timestamptz(6)
+
+  versions     SchemeVersion[]
+  applications Application[]
+
+  @@map("schemes")
+}
+
+model SchemeVersion {
+  id                    String    @id @default(uuid()) @db.Uuid
+  scheme_id             String    @db.Uuid
+  scheme                Scheme    @relation(fields: [scheme_id], references: [id], onDelete: Restrict)
+  version_no            Int
+  effective_from        DateTime  @db.Date
+  effective_to          DateTime? @db.Date
+  status                String    @default("active") // "active" | "archived"
+  config                Json // JSONB column storing eligibility rules & benefit structure
+  source_document       String?
+  source_url            String?
+  extraction_confidence String?
+  extraction_notes      String?
+  created_at            DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime  @updatedAt @db.Timestamptz(6)
+
+  applications     Application[]
+  rule_evaluations RuleEvaluation[]
+  renewals         Renewal[]
+
+  @@unique([scheme_id, version_no])
+  @@index([scheme_id, status])
+  @@map("scheme_versions")
+}
+
+// ---------------------------------------------------------
+// 3. Application Lifecycle Models
+// ---------------------------------------------------------
+
+model Application {
+  id             String    @id @default(uuid()) @db.Uuid
+  application_no String    @unique
+  applicant_id   String    @db.Uuid
+  applicant      Applicant @relation(fields: [applicant_id], references: [id], onDelete: Restrict)
+  scheme_id      String    @db.Uuid
+  scheme         Scheme    @relation(fields: [scheme_id], references: [id], onDelete: Restrict)
+
+  // Required FK to SchemeVersion: set upon submission and frozen.
+  // Note: Freeze enforcement (immutable after creation) is guaranteed at DB trigger level (prevent_scheme_version_change), not Prisma.
+  scheme_version_id String        @db.Uuid
+  scheme_version    SchemeVersion @relation(fields: [scheme_version_id], references: [id], onDelete: Restrict)
+
+  academic_year String // e.g. "2024-25"
+  current_stage String @default("SUBMITTED") // SUBMITTED, INO_VERIFIED, DNO_VERIFIED, SNO_VERIFIED, MINISTRY_APPROVED, DEFECTIVE, REJECTED, DISBURSED
+  status        String @default("PENDING") // DERIVED from current_stage (src/workflow STATUS_FOR_STAGE; DB CHECK applications_status_derived_from_stage_check). Never set independently.
+
+  // Phase 4 workflow: the current stage entry and its SLA due time (NULL = no SLA for the stage).
+  stage_entered_at                DateTime  @default(now()) @db.Timestamptz(6)
+  stage_due_at                    DateTime? @db.Timestamptz(6)
+  // Routed on by an INDETERMINATE automatic eligibility gate: needs a manual eligibility review.
+  needs_eligibility_review        Boolean   @default(false)
+  // Phase 7: cross-document consistency flag for officers (never changes current_stage).
+  document_consistency_status     String? // CONSISTENT | INCONSISTENT | UNCERTAIN (DB CHECK)
+  document_consistency_details    Json?
+  document_consistency_checked_at DateTime? @db.Timestamptz(6)
+
+  // Jurisdictional routing attributes
+  jurisdiction_state    String
+  jurisdiction_district String?
+  institution_name      String?
+  institution_code      String? // AISHE / U-DISE / NCVT / QS Rank
+  course_name           String?
+  course_year           Int?
+  is_hosteller          Boolean @default(false)
+
+  assigned_officer_id String?  @db.Uuid
+  assigned_officer    Officer? @relation("AssignedOfficer", fields: [assigned_officer_id], references: [id], onDelete: SetNull)
+
+  submitted_at DateTime @default(now()) @db.Timestamptz(6)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @updatedAt @db.Timestamptz(6)
+
+  documents            Document[]
+  decision_records     DecisionRecord[]
+  deficiencies         Deficiency[]
+  deficiency_items     DeficiencyItem[]
+  workflow_transitions WorkflowTransition[]
+  scores               Score[]
+  selections           Selection[]
+  disbursements        Disbursement[]
+  renewals             Renewal[]
+  rule_evaluations     RuleEvaluation[]
+  document_extractions DocumentExtraction[]
+  notifications        Notification[]
+  sanction_orders      SanctionOrder[]
+  grievances           Grievance[]
+
+  // Phase 11: detection findings about this application (RLS by the flag's jurisdiction).
+  fraud_flags FraudFlag[]
+
+  @@index([jurisdiction_state, jurisdiction_district, status])
+  @@index([submitted_at, scheme_id]) // Phase 12 analytics cohort window
+  @@index([assigned_officer_id, status, submitted_at])
+  @@index([current_stage, stage_due_at])
+  @@index([document_consistency_status])
+  @@index([stage_due_at])
+  @@map("applications")
+}
+
+// ---------------------------------------------------------
+// 4. Documents & Verification Models
+// ---------------------------------------------------------
+
+model Document {
+  id                     String      @id @default(uuid()) @db.Uuid
+  application_id         String      @db.Uuid
+  application            Application @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  document_type          String // CASTE_CERTIFICATE, INCOME_CERTIFICATE, MARKSHEET, FEE_RECEIPT, BANK_PASSBOOK, BONAFIDE, DISABILITY_CERT, OFFER_LETTER
+  file_name              String
+  file_path              String
+  file_size_bytes        Int?
+  mime_type              String?
+  verification_status    String      @default("PENDING") // PENDING, VERIFIED, REJECTED, DEFECTIVE
+  verified_by_officer_id String?     @db.Uuid
+  verified_at            DateTime?   @db.Timestamptz(6)
+  created_at             DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime    @updatedAt @db.Timestamptz(6)
+
+  // Phase 7: upload facts (upload timestamp = created_at).
+  file_sha256    String?
+  quality_usable Boolean?
+  quality_result Json? // the synchronous quality check (mock fixtures when ML_MODE=mock)
+  intake_status  String? // QUALITY_REJECTED | QUEUED (DB CHECK)
+
+  // Phase 10: where the document came from. UPLOAD = a file through the OCR
+  // pipeline; DIGILOCKER = the issuer's record via DigiLocker (no OCR).
+  source               String    @default("UPLOAD") // UPLOAD | DIGILOCKER (DB CHECK)
+  digilocker_reference String?
+  issuer               String?
+  issuer_document_date DateTime? @db.Date
+  issuer_verified_at   DateTime? @db.Timestamptz(6)
+
+  extractions                  DocumentExtraction[]
+  deficiency_items_resubmitted DeficiencyItem[]
+
+  @@index([application_id, document_type])
+  @@index([file_sha256])
+  @@index([digilocker_reference])
+  @@map("documents")
+}
+
+model DocumentExtraction {
+  id                          String      @id @default(uuid()) @db.Uuid
+  document_id                 String      @db.Uuid
+  document                    Document    @relation(fields: [document_id], references: [id], onDelete: Cascade)
+  // Phase 7: denormalised so the SYSTEM worker never reads RLS-protected rows.
+  application_id              String      @db.Uuid
+  application                 Application @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  document_slot               String
+  status                      String // COMPLETED | FAILED (DB CHECK)
+  error_code                  String?
+  classification_type         String?
+  classification_confidence   Float?
+  classification_alternatives Json?
+  classification_matches_slot Boolean?
+  // Non-sensitive values; a sensitive field holds {"redacted": true, "encrypted": true}.
+  extracted_data              Json
+  field_confidence            Json        @default("{}") // per-field confidence
+  field_review                Json        @default("{}") // per-field AUTO_ACCEPTED | NEEDS_REVIEW | OFFICER_CONFIRMED
+  review_status               String? // AUTO_ACCEPTED | NEEDS_REVIEW | OFFICER_CONFIRMED (DB CHECK)
+  review_threshold            Float?
+  sensitive_values            Bytes? // AES-256-GCM JSON of the sensitive fields (PII key)
+  raw_text_encrypted          Bytes? // AES-256-GCM raw OCR text
+  eligibility_mismatches      Json? // field names only
+  corrected_fields            Json? // field names corrected by the confirming officer
+  /// Phase 13D: per field {page, x, y, width, height, coordinate_space} or null (ml service only).
+  field_boxes                 Json?
+  /// Phase 13B: the officer's reason for the confirmation (required when a value was corrected; DB trigger).
+  confirmation_reason         String?
+  confirmed_by_officer_id     String?     @db.Uuid
+  confirmed_by_officer        Officer?    @relation("ExtractionConfirmedBy", fields: [confirmed_by_officer_id], references: [id], onDelete: Restrict)
+  confirmed_at                DateTime?   @db.Timestamptz(6)
+  confidence_score            Float? // lowest per-field confidence
+  extraction_engine           String? // "ML_SERVICE" | "MOCK_ML" (+ fixture) | "DIGILOCKER" (Phase 10: issuer data, no OCR)
+  is_verified                 Boolean     @default(false) // review_status is AUTO_ACCEPTED or OFFICER_CONFIRMED
+  created_at                  DateTime    @default(now()) @db.Timestamptz(6)
+
+  @@index([document_id])
+  @@index([application_id, document_slot])
+  @@index([review_status])
+  @@map("document_extractions")
+}
+
+// ---------------------------------------------------------
+// 4b. Scheme engine (Phase 3): machine-generated rule evaluations
+// ---------------------------------------------------------
+
+model RuleEvaluation {
+  id                      String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  evaluation_run_id       String        @db.Uuid // groups the rows of one evaluation run
+  scheme_version_id       String        @db.Uuid
+  scheme_version          SchemeVersion @relation(fields: [scheme_version_id], references: [id], onDelete: Restrict)
+  application_id          String?       @db.Uuid // NULL for reverse-eligibility checks
+  application             Application?  @relation(fields: [application_id], references: [id], onDelete: Restrict)
+  rule_id                 String
+  rule_type               String // eligibility | operational | benefit_note | unmapped
+  expr                    String // expression text as evaluated
+  verdict                 String // PASS | FAIL | COMPUTED | INFO | ERROR (DB CHECK)
+  result_value            Json?
+  trace                   Json // full EvalResult (or the RuleError) as evaluated
+  explanation             String?
+  message_key             String?
+  evaluated_by_account_id String?       @default(dbgenerated("(NULLIF(current_setting('app.actor_id'::text, true), ''::text))::uuid")) @db.Uuid // from the Phase 2 actor transaction
+  evaluated_by_role       String?       @default(dbgenerated("NULLIF(current_setting('app.actor_role'::text, true), ''::text)"))
+  created_at              DateTime      @default(now()) @db.Timestamptz(6)
+
+  scores Score[]
+
+  @@index([application_id, created_at])
+  @@index([evaluation_run_id])
+  @@index([scheme_version_id, rule_id])
+  @@map("rule_evaluations")
+}
+
+// ---------------------------------------------------------
+// 5. Governance, Decisions & Deficiencies
+// ---------------------------------------------------------
+
+model DecisionRecord {
+  id             String      @id @default(uuid()) @db.Uuid
+  application_id String      @db.Uuid
+  application    Application @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  officer_id     String      @db.Uuid
+  officer        Officer     @relation(fields: [officer_id], references: [id], onDelete: Restrict)
+  decision       String // "APPROVE", "REJECT", "DEFECT", "ESCALATE", "DISBURSE"
+  stage          String // "INSTITUTE", "DISTRICT", "STATE", "MINISTRY"
+  remarks        String?
+  reasons        Json?
+  created_at     DateTime    @default(now()) @db.Timestamptz(6)
+  /// Phase 17 (F4): the bulk action this decision was part of (null: an
+  /// individual decision, or one recorded before Phase 17). Set by the DB
+  /// default from the transaction-local app.bulk_batch_id.
+  bulk_batch_id  String?     @default(dbgenerated("(NULLIF(current_setting('app.bulk_batch_id'::text, true), ''::text))::uuid")) @db.Uuid
+
+  @@index([application_id, stage])
+  @@map("decision_records")
+}
+
+model Deficiency {
+  id               String           @id @default(uuid()) @db.Uuid
+  application_id   String           @db.Uuid
+  application      Application      @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  officer_id       String           @db.Uuid
+  officer          Officer          @relation(fields: [officer_id], references: [id], onDelete: Restrict)
+  code             String // e.g. "DEF_INCOME_EXPIRED", "DEF_CASTE_UNCLEAR"
+  title            String
+  description      String
+  status           String           @default("OPEN") // OPEN, RESOLVED, WAIVED
+  resolved_at      DateTime?        @db.Timestamptz(6)
+  student_response String?
+  created_at       DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime         @updatedAt @db.Timestamptz(6)
+  items            DeficiencyItem[]
+
+  @@index([application_id, status])
+  @@map("deficiencies")
+}
+
+/// Phase 13C: one item of a deficiency (document, problem, fix, deadline).
+/// RLS as deficiencies; audited; no DELETE for app_user.
+model DeficiencyItem {
+  id                      String      @id @default(uuid()) @db.Uuid
+  deficiency_id           String      @db.Uuid
+  deficiency              Deficiency  @relation(fields: [deficiency_id], references: [id], onDelete: Restrict)
+  application_id          String      @db.Uuid
+  application             Application @relation(fields: [application_id], references: [id], onDelete: Restrict)
+  document_slot           String? // NULL = across documents
+  document_type           String? // canonical type (documents/document-types.ts)
+  field                   String? // FIELD_CONFIDENCE only
+  check_code              String // DOCUMENT_PRESENT | QUALITY_GATE | DOCUMENT_VALIDITY | NAME_CONSISTENCY | DOB_CONSISTENCY | FIELD_CONFIDENCE | OFFICER
+  source                  String // CHECK | OFFICER
+  problem_code            String // message key deficiency.problem.*
+  fix_code                String // message key deficiency.fix.*
+  previous_problem_code   String?
+  officer_reason          String?
+  deadline_at             DateTime    @db.Timestamptz(6)
+  status                  String      @default("OPEN") // OPEN | RESUBMITTED | RESOLVED (OVERDUE computed when read)
+  crop_ref                Json? // Phase 13D: {document_id, field, page, x, y, width, height, coordinate_space} or null
+  resubmitted_document_id String?     @db.Uuid
+  resubmitted_document    Document?   @relation(fields: [resubmitted_document_id], references: [id], onDelete: Restrict)
+  last_check              Json?
+  last_checked_at         DateTime?   @db.Timestamptz(6)
+  created_by_officer_id   String      @db.Uuid
+  created_by_officer      Officer     @relation(fields: [created_by_officer_id], references: [id], onDelete: Restrict)
+  resolved_at             DateTime?   @db.Timestamptz(6)
+  created_at              DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime    @updatedAt @db.Timestamptz(6)
+
+  @@index([deficiency_id], map: "deficiency_items_deficiency_idx")
+  @@index([application_id, status], map: "deficiency_items_application_status_idx")
+  @@map("deficiency_items")
+}
+
+model WorkflowTransition {
+  id             String      @id @default(uuid()) @db.Uuid
+  application_id String      @db.Uuid
+  application    Application @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  from_stage     String
+  to_stage       String
+  triggered_by   String // Officer UUID or "SYSTEM"
+  trigger_action String
+  metadata       Json?
+  created_at     DateTime    @default(now()) @db.Timestamptz(6)
+
+  @@index([application_id, created_at])
+  @@map("workflow_transitions")
+}
+
+// ---------------------------------------------------------
+// 6. Merit, Selection, Disbursement & Renewal
+// ---------------------------------------------------------
+
+model Score {
+  id                 String          @id @default(uuid()) @db.Uuid
+  application_id     String          @db.Uuid
+  application        Application     @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  officer_id         String?         @db.Uuid
+  officer            Officer?        @relation(fields: [officer_id], references: [id], onDelete: SetNull)
+  score_type         String // "MERIT_PG", "UGC_NET_JRF", "QS_WORLD_RANKING", "INTERVIEW"
+  score_value        Float
+  normalized_score   Float?
+  weightage          Float?
+  breakdown          Json?
+  // Phase 6: the rule_evaluations row this score was read from (never recomputed).
+  rule_evaluation_id String?         @db.Uuid
+  rule_evaluation    RuleEvaluation? @relation(fields: [rule_evaluation_id], references: [id], onDelete: Restrict)
+  created_at         DateTime        @default(now()) @db.Timestamptz(6)
+
+  selections Selection[]
+
+  @@index([application_id, score_type])
+  @@index([rule_evaluation_id])
+  @@map("scores")
+}
+
+model Selection {
+  id                     String      @id @default(uuid()) @db.Uuid
+  application_id         String      @db.Uuid
+  application            Application @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  scheme_code            String
+  academic_year          String
+  merit_rank             Int? // NULL = not ranked (NO_COMPETITION, or no merit value)
+  // Phase 6: vertical pool + the horizontal reservation the candidate was SELECTED UNDER
+  // (false for a reservation-eligible candidate who took a general seat on merit).
+  vertical_category      String // "ST_OTHERS" | "PVTG" (DB CHECK)
+  is_female_reserved     Boolean     @default(false)
+  is_pwd_reserved        Boolean     @default(false) // at most one of the two (DB CHECK)
+  selection_basis        String // "NO_COMPETITION" | "RANKED_NO_CAP" | "QUOTA" (DB CHECK)
+  selection_run_id       String      @db.Uuid
+  score_id               String?     @db.Uuid // the Score the ranking used
+  score                  Score?      @relation(fields: [score_id], references: [id], onDelete: Restrict)
+  selection_status       String      @default("PROVISIONAL") // "PROVISIONAL", "CONFIRMED", "WAITLISTED", "WITHDRAWN"
+  allotted_slot          Int?
+  notified_in_merit_list String?
+  selection_date         DateTime    @default(now()) @db.Date
+  created_at             DateTime    @default(now()) @db.Timestamptz(6)
+
+  // Partial unique index selections_one_live_per_application_key (PROVISIONAL/CONFIRMED) lives in SQL.
+  // Phase 9: confirmation (MINISTRY_OFFICER) and objection-window override.
+  confirmed_at                DateTime?      @db.Timestamptz(6)
+  confirmed_by_officer_id     String?        @db.Uuid
+  confirmed_by_officer        Officer?       @relation("SelectionConfirmedBy", fields: [confirmed_by_officer_id], references: [id], onDelete: Restrict)
+  objection_window_overridden Boolean        @default(false)
+  override_reason             String?
+  sanction_order              SanctionOrder?
+  disbursements               Disbursement[]
+  grievances                  Grievance[]
+
+  @@index([scheme_code, academic_year, selection_status])
+  @@index([selection_run_id])
+  @@map("selections")
+}
+
+model Disbursement {
+  id                    String      @id @default(uuid()) @db.Uuid
+  application_id        String      @db.Uuid
+  application           Application @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  installment_no        Int
+  financial_year        String // e.g. "2024-25"
+  component_type        String // "MAINTENANCE", "TUITION_FEE", "BOOKS_STATIONERY", "COMPUTER", "CONTINGENCY", "DISABILITY"
+  amount                Float
+  beneficiary_type      String // "STUDENT_DBT", "INSTITUTE_PFMS"
+  payment_mode          String      @default("PFMS_DBT") // PFMS_DBT, AEPS, PFMS_INSTITUTE, MEA_MISSION
+  status                String      @default("PENDING") // PENDING, PROCESSING, SUCCESS, FAILED, REFUNDED
+  transaction_reference String?
+  utr_number            String?
+  disbursed_at          DateTime?   @db.Timestamptz(6)
+  failure_reason        String?
+  created_at            DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime    @updatedAt @db.Timestamptz(6)
+
+  // Phase 9. NO bank-account reference of any kind is stored here: bank_account
+  // is on the Phase 3 sensitive list, and even a masked/partial reference is
+  // derived from it. Correlating a disbursement with an account means
+  // decrypting the Applicant row through the PII extension - by design.
+  currency                 String // ISO 4217 (DB CHECK); benefits[] are in mixed currencies
+  selection_id             String        @db.Uuid
+  selection                Selection     @relation(fields: [selection_id], references: [id], onDelete: Restrict)
+  sanction_order_id        String        @db.Uuid
+  sanction_order           SanctionOrder @relation(fields: [sanction_order_id], references: [id], onDelete: Restrict)
+  /// Phase 14 loose ends (D1): set on the instalments of an approved renewal year.
+  renewal_id               String?       @db.Uuid
+  academic_year            String
+  scheduled_date           DateTime      @db.Date
+  benefit_lines            Json // the benefits[] lines summed into this instalment
+  initiated_by_officer_id  String?       @db.Uuid
+  initiated_by_officer     Officer?      @relation("DisbursementInitiatedBy", fields: [initiated_by_officer_id], references: [id], onDelete: Restrict)
+  reconciled_by_officer_id String?       @db.Uuid
+  reconciled_by_officer    Officer?      @relation("DisbursementReconciledBy", fields: [reconciled_by_officer_id], references: [id], onDelete: Restrict)
+  reconciled_at            DateTime?     @db.Timestamptz(6)
+  grievances               Grievance[]
+
+  @@index([application_id, status])
+  @@index([financial_year, status])
+  @@map("disbursements")
+}
+
+model Renewal {
+  id                    String      @id @default(uuid()) @db.Uuid
+  parent_application_id String      @db.Uuid
+  parent_application    Application @relation(fields: [parent_application_id], references: [id], onDelete: Cascade)
+  academic_year         String
+  academic_year_number  Int // e.g. 2, 3, 4
+  passed_previous_year  Boolean
+  percentage_obtained   Float?
+  marksheet_path        String?
+  verification_status   String      @default("PENDING")
+  verified_at           DateTime?   @db.Timestamptz(6)
+  created_at            DateTime    @default(now()) @db.Timestamptz(6)
+
+  // Phase 9: renewal cycle (NFST / NOS only). verification_status is the state:
+  // PENDING -> ENDORSED -> APPROVED | DISCONTINUED (DB CHECK).
+  scheme_version_id              String        @db.Uuid // the application's FROZEN version, evaluated on renewal
+  scheme_version                 SchemeVersion @relation(fields: [scheme_version_id], references: [id], onDelete: Restrict)
+  progress_report                String
+  submitted_by_account_id        String?       @db.Uuid
+  endorsed_by_officer_id         String?       @db.Uuid
+  endorsed_by_officer            Officer?      @relation("RenewalEndorsedBy", fields: [endorsed_by_officer_id], references: [id], onDelete: Restrict)
+  endorsed_at                    DateTime?     @db.Timestamptz(6)
+  endorsement_remarks            String?
+  continuation_rule_id           String?
+  continuation_verdict           String? // PASS | FAIL | ERROR
+  continuation_evaluation_run_id String?       @db.Uuid
+  continuation_checked_at        DateTime?     @db.Timestamptz(6)
+  decided_by_officer_id          String?       @db.Uuid
+  decided_by_officer             Officer?      @relation("RenewalDecidedBy", fields: [decided_by_officer_id], references: [id], onDelete: Restrict)
+  decision_remarks               String?
+  updated_at                     DateTime      @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Phase 14 loose ends (D1, M21): the recorded year advance of an APPROVED
+  // renewal (one year forward; DB CHECK) - the PhD year the NFST tier reads.
+  year_advanced_from Int?
+  year_advanced_to   Int?
+  year_advanced_at   DateTime? @db.Timestamptz(6)
+
+  @@index([parent_application_id])
+  @@map("renewals")
+}
+
+// ---------------------------------------------------------
+// 7. Communication & Audit Trail Models
+// ---------------------------------------------------------
+
+model NoticeTemplate {
+  id               String   @id @default(uuid()) @db.Uuid
+  code             String // e.g. DEFICIENCY_NOTICE, PROVISIONAL_SELECTION, DISBURSEMENT_SUCCESS, AWARD_LETTER
+  /// Phase 13C: one row per (code, locale, channel).
+  locale           String   @default("en")
+  title            String
+  scheme_code      String?
+  channel          String // "SMS", "EMAIL", "PORTAL", "PDF"
+  subject_template String?
+  body_template    String
+  variables        Json? // Allowed variables e.g. ["student_name", "application_no", "amount"]
+  is_active        Boolean  @default(true)
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime @updatedAt @db.Timestamptz(6)
+
+  @@unique([code, locale, channel], map: "notice_templates_code_locale_channel_key")
+  @@map("notice_templates")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  table_name    String
+  record_id     String   @db.Uuid
+  action        String // "INSERT", "UPDATE", "DELETE"
+  actor_id      String?  @db.Uuid
+  actor_user_id String?  @db.Uuid // raw app.actor_id (acting user); no FK, set for every actor
+  actor_type    String? // OFFICER | APPLICANT | UNKNOWN, derived by the audit trigger; NULL = no actor
+  actor_role    String?
+  ip_address    String?
+  row_data      Json
+  prev_hash     String?
+  /// hash_version 2 (seq >= 1): sha256(hash_input). Legacy rows (seq NULL): sha256(prev_hash || row_to_json text), not recomputable (Phase 13A).
+  record_hash   String
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  /// Phase 13A: position in the single linear chain (NULL = legacy row).
+  seq           BigInt?  @unique
+  /// Phase 13A: 2 = canonical envelope hashing; NULL = legacy.
+  hash_version  Int?     @db.SmallInt
+  /// Phase 13A: the canonical JSON that was hashed (api/src/audit/canonical.ts).
+  hash_input    String?
+
+  officer Officer? @relation(fields: [actor_id], references: [id], onDelete: SetNull)
+
+  @@index([table_name, record_id])
+  @@index([created_at])
+  @@index([actor_user_id])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------
+// 8. Notifications (Phase 8): one row per (recipient account, channel)
+// ---------------------------------------------------------
+
+model Notification {
+  id                              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  event_type                      String // domain event that produced it
+  template_key                    String
+  locale                          String
+  /// Phase 13C: the language asked for; locale <> requested_locale = a recorded fallback.
+  requested_locale                String?
+  channel                         String // IN_APP | EMAIL | SMS (DB CHECK)
+  recipient_account_id            String       @db.Uuid
+  recipient_account               Account      @relation(fields: [recipient_account_id], references: [id], onDelete: Cascade)
+  recipient_address               String? // email / phone used for EMAIL / SMS
+  recipient_role                  String? // officer audience it was resolved from
+  recipient_jurisdiction_state    String?
+  recipient_jurisdiction_district String?
+  application_id                  String?      @db.Uuid
+  application                     Application? @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  subject                         String // rendered for storage (sensitive params redacted)
+  body                            String // rendered for storage (sensitive params redacted)
+  redacted_params                 Json         @default("[]")
+  status                          String       @default("PENDING") // PENDING | SENT | FAILED (DB CHECK)
+  error                           String?
+  created_at                      DateTime     @default(now()) @db.Timestamptz(6)
+  delivered_at                    DateTime?    @db.Timestamptz(6)
+  read_at                         DateTime?    @db.Timestamptz(6)
+
+  @@index([recipient_account_id, channel, created_at(sort: Desc)], map: "notifications_recipient_channel_created_idx")
+  @@index([application_id, event_type, created_at(sort: Desc)], map: "notifications_application_event_created_idx")
+  @@map("notifications")
+}
+
+// ---------------------------------------------------------
+// 9. Post-selection (Phase 9): sanction orders and grievances
+// ---------------------------------------------------------
+
+model SanctionOrder {
+  id                      String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  selection_id            String         @unique @db.Uuid
+  selection               Selection      @relation(fields: [selection_id], references: [id], onDelete: Restrict)
+  application_id          String         @db.Uuid
+  application             Application    @relation(fields: [application_id], references: [id], onDelete: Restrict)
+  content                 Json // canonical order data
+  content_sha256          String // SHA-256 of the canonical JSON of content (not of the PDF bytes)
+  pdf_storage_key         String
+  generated_by_officer_id String         @db.Uuid
+  generated_by_officer    Officer        @relation("SanctionOrderGeneratedBy", fields: [generated_by_officer_id], references: [id], onDelete: Restrict)
+  generated_at            DateTime       @default(now()) @db.Timestamptz(6)
+  disbursements           Disbursement[]
+
+  @@index([application_id])
+  @@map("sanction_orders")
+}
+
+model Grievance {
+  id                     String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  application_id         String        @db.Uuid
+  application            Application   @relation(fields: [application_id], references: [id], onDelete: Restrict)
+  raised_by_applicant_id String        @db.Uuid
+  raised_by_applicant    Applicant     @relation(fields: [raised_by_applicant_id], references: [id], onDelete: Restrict)
+  subject_type           String // APPLICATION | SELECTION | DISBURSEMENT | SELECTION_OBJECTION (DB CHECK)
+  selection_id           String?       @db.Uuid
+  selection              Selection?    @relation(fields: [selection_id], references: [id], onDelete: Restrict)
+  disbursement_id        String?       @db.Uuid
+  disbursement           Disbursement? @relation(fields: [disbursement_id], references: [id], onDelete: Restrict)
+  selection_run_id       String?       @db.Uuid // objection: the run the application was NOT selected in
+  description            String
+  status                 String        @default("OPEN") // OPEN | IN_PROGRESS | RESOLVED | REJECTED (DB CHECK)
+  status_entered_at      DateTime      @default(now()) @db.Timestamptz(6)
+  sla_due_at             DateTime?     @db.Timestamptz(6)
+  resolution_note        String?
+  resolved_by_officer_id String?       @db.Uuid
+  resolved_by_officer    Officer?      @relation("GrievanceResolvedBy", fields: [resolved_by_officer_id], references: [id], onDelete: Restrict)
+  resolved_at            DateTime?     @db.Timestamptz(6)
+  created_at             DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime      @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@index([application_id])
+  @@index([status, sla_due_at], map: "grievances_status_sla_idx")
+  @@index([selection_run_id])
+  @@map("grievances")
+}
+
+/// A refused privileged / consequential action (migration 20260928010000).
+/// Written only by record_authorization_denial() (SECURITY DEFINER);
+/// append-only for every role; its own SHA-256 chain, separate from
+/// audit_logs: record_hash = sha256(coalesce(prev_hash,'') ||
+/// authorization_denial_canonical(row)). Read under RLS (officer jurisdiction).
+model AuthorizationDenial {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  occurred_at           DateTime @default(now()) @db.Timestamptz(6)
+  actor_user_id         String?  @db.Uuid
+  actor_id              String?  @db.Uuid // officers.id when the actor is an officer (no FK: rows are immutable)
+  actor_type            String? // OFFICER | APPLICANT | UNKNOWN; NULL = no actor (SYSTEM / anonymous)
+  actor_role            String?
+  action_attempted      String
+  subject_type          String?
+  subject_id            String?
+  denial_reason         String
+  details               Json     @default("{}")
+  jurisdiction_state    String?
+  jurisdiction_district String?
+  jurisdiction_source   String? // SUBJECT | ACTOR
+  ip_address            String?
+  request_id            String?
+  prev_hash             String?
+  record_hash           String
+  /// Phase 13B: position in the denials chain (NULL = legacy row), hash rule version, canonical hashed input.
+  seq                   BigInt?  @unique
+  hash_version          Int?     @db.SmallInt
+  hash_input            String?
+
+  @@index([occurred_at])
+  @@index([actor_user_id])
+  @@index([subject_type, subject_id])
+  @@index([jurisdiction_state, jurisdiction_district])
+  @@map("authorization_denials")
+}
+
+/// Phase 11: keyed-hash (HMAC-SHA256, FRAUD_MATCH_KEY) index of exact-match
+/// identifiers - equal values match without decrypting anyone's row. Holds no
+/// plaintext and no ciphertext. SYSTEM-only (RLS).
+model PiiMatchIndex {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicant_id String   @db.Uuid
+  field        String // bank_account | caste_cert_number | certificate_number (DB CHECK)
+  source       String // DECLARED | OCR | DIGILOCKER (DB CHECK)
+  document_id  String?  @db.Uuid
+  match_hmac   String // 64 hex chars
+  key_version  Int      @default(1) @db.SmallInt
+  indexed_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([field, match_hmac])
+  @@map("pii_match_index")
+}
+
+/// Phase 11: one detection finding for one subject (an application or an
+/// institution). Evidence holds record ids only - never a raw identifier.
+/// Created by detection (SYSTEM); dispositioned by an officer (RLS by the
+/// flag's own jurisdiction). Audited by the standard trigger.
+model FraudFlag {
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_at              DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime  @default(now()) @db.Timestamptz(6)
+  flag_type               String // SHARED_BANK_ACCOUNT | REPEATED_CERTIFICATE_NUMBER | DUPLICATE_FILE_HASH | INSTITUTION_SURGE | FUZZY_IDENTITY_MATCH
+  severity                String // LOW | MEDIUM | HIGH
+  status                  String    @default("OPEN") // OPEN | CONFIRMED | FALSE_POSITIVE | NEEDS_MORE_INFO
+  subject_type            String // APPLICATION | INSTITUTION
+  application_id          String?   @db.Uuid
+  institution_code        String?
+  related_application_ids String[]  @default([]) @db.Uuid
+  related_document_ids    String[]  @default([]) @db.Uuid
+  confidence              Float?
+  summary                 String
+  evidence                Json      @default("{}")
+  detector                String
+  detector_version        Int       @default(1)
+  jurisdiction_state      String?
+  jurisdiction_district   String?
+  dedup_key               String    @unique
+  reviewed_by_officer_id  String?   @db.Uuid
+  reviewed_at             DateTime? @db.Timestamptz(6)
+  review_notes            String?
+
+  application Application? @relation(fields: [application_id], references: [id], onDelete: Restrict)
+
+  @@index([application_id, status])
+  @@index([institution_code, status])
+  @@index([jurisdiction_state, jurisdiction_district])
+  @@map("fraud_flags")
+}
+
+/// Phase 11.5 (B5): register of rows created by proof harnesses, so analytics
+/// can exclude them. Read-only to app_user; maintained by the database owner.
+model TestFixture {
+  entity_type String
+  entity_id   String   @db.Uuid
+  label       String
+  note        String?
+  tagged_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([entity_type, entity_id])
+  @@index([label])
+  @@map("test_fixtures")
+}
+
+/// Phase 13A: the audit chain's single serialisation point and tail anchor
+/// (one row; written only by audit_chain_append; read by the verifier).
+model AuditChainHead {
+  id         Boolean  @id @default(true)
+  last_seq   BigInt
+  last_hash  String?
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("audit_chain_head")
+}
+
+/// Phase 13B: the authorization-denials chain's serialisation point and tail anchor.
+model AuthorizationDenialChainHead {
+  id         Boolean  @id @default(true)
+  last_seq   BigInt
+  last_hash  String?
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("authorization_denial_chain_head")
+}
+
+/// Phase 13D: which profile fields an applicant changed (never the values).
+/// RLS: the owning applicant only; audited; SELECT / INSERT for app_user.
+model ApplicantProfileChange {
+  id                    String    @id @default(uuid()) @db.Uuid
+  applicant_id          String    @db.Uuid
+  applicant             Applicant @relation(fields: [applicant_id], references: [id], onDelete: Restrict)
+  changed_fields        String[]
+  changed_by_account_id String    @db.Uuid
+  created_at            DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([applicant_id, created_at], map: "applicant_profile_changes_applicant_idx")
+  @@map("applicant_profile_changes")
+}
+
+/// Phase 13E: a selection run's list lifecycle (committee review, publication,
+/// objection window, final list). Frozen once FINAL_PUBLISHED (trigger).
+model SelectionList {
+  id                       String    @id @default(uuid()) @db.Uuid
+  selection_run_id         String    @unique @db.Uuid
+  scheme_code              String
+  academic_year            String
+  status                   String    @default("DRAFT") // DRAFT | PROVISIONAL_PUBLISHED | OBJECTION_WINDOW_CLOSED | FINAL_PUBLISHED
+  approvals_required       Int
+  objection_window_days    Int
+  provisional_published_at DateTime? @db.Timestamptz(6)
+  provisional_published_by String?   @db.Uuid
+  window_closes_at         DateTime? @db.Timestamptz(6)
+  window_closed_at         DateTime? @db.Timestamptz(6)
+  window_closed_by         String?   @db.Uuid
+  window_closed_early      Boolean   @default(false)
+  final_published_at       DateTime? @db.Timestamptz(6)
+  final_published_by       String?   @db.Uuid
+  created_at               DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime  @updatedAt @db.Timestamptz(6)
+
+  entries   SelectionListEntry[]
+  decisions SelectionCommitteeDecision[]
+
+  @@index([scheme_code, academic_year], map: "selection_lists_scheme_year_idx")
+  @@map("selection_lists")
+}
+
+/// Phase 13E: one candidate of a run - the allocator's result (never edited),
+/// the committee's decision beside it, and the final outcome. RLS by application.
+model SelectionListEntry {
+  id                     String        @id @default(uuid()) @db.Uuid
+  selection_list_id      String        @db.Uuid
+  selection_list         SelectionList @relation(fields: [selection_list_id], references: [id], onDelete: Restrict)
+  application_id         String        @db.Uuid
+  selection_id           String?       @db.Uuid
+  computed_outcome       String // SELECTED | NOT_SELECTED | HELD
+  computed_rank          Int?
+  not_selected_reason    String?
+  vertical_category      String?
+  horizontal_reservation String?
+  committee_decision     String? // INCLUDE | EXCLUDE
+  final_outcome          String? // set at final publication
+  created_at             DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime      @updatedAt @db.Timestamptz(6)
+
+  decisions SelectionCommitteeDecision[]
+
+  @@unique([selection_list_id, application_id], map: "selection_list_entries_one_per_app_key")
+  @@index([application_id], map: "selection_list_entries_application_idx")
+  @@map("selection_list_entries")
+}
+
+/// Phase 13E: insert-only committee decisions (reason >= 10 trimmed chars; DB CHECK).
+model SelectionCommitteeDecision {
+  id                String              @id @default(uuid()) @db.Uuid
+  selection_list_id String              @db.Uuid
+  selection_list    SelectionList       @relation(fields: [selection_list_id], references: [id], onDelete: Restrict)
+  entry_id          String?             @db.Uuid
+  entry             SelectionListEntry? @relation(fields: [entry_id], references: [id], onDelete: Restrict)
+  grievance_id      String?             @db.Uuid
+  officer_id        String              @db.Uuid
+  kind              String // APPROVE_LIST | OVERRIDE_INCLUDE | OVERRIDE_EXCLUDE | OBJECTION_UPHELD | OBJECTION_DISMISSED | CLOSE_WINDOW_EARLY
+  reason            String?
+  created_at        DateTime            @default(now()) @db.Timestamptz(6)
+
+  @@index([selection_list_id, created_at], map: "selection_committee_decisions_list_idx")
+  @@map("selection_committee_decisions")
+}
+
+/// Phase 14 loose ends (Part B): one recorded SLA breach per stage instance
+/// (application, stage, stage_entered_at). Written only by the SYSTEM sweep
+/// through sla_record_breaches(); read-only for app_user, jurisdiction RLS.
+model SlaBreach {
+  id                      String   @id @default(uuid()) @db.Uuid
+  application_id          String   @db.Uuid
+  stage                   String
+  stage_entered_at        DateTime @db.Timestamptz(6)
+  stage_due_at            DateTime @db.Timestamptz(6)
+  sla_days                Decimal  @db.Decimal
+  jurisdiction_state      String
+  jurisdiction_district   String?
+  sweep_run_id            String   @db.Uuid
+  detected_at             DateTime @db.Timestamptz(6)
+  triggered_by_account_id String?  @db.Uuid
+  created_at              DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([application_id, stage, stage_entered_at], map: "sla_breaches_stage_instance_key")
+  @@index([detected_at], map: "sla_breaches_detected_at_idx")
+  @@map("sla_breaches")
+}
+
+/// Phase 17 (E): one successful document view / download / crop view - ids,
+/// route and actor only. Insert-only (the row must name the actor itself),
+/// read under the jurisdiction rule; audited.
+model DocumentAccessLog {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  accessed_at           DateTime @default(now()) @db.Timestamptz(6)
+  actor_account_id      String   @db.Uuid
+  actor_role            String
+  access_kind           String // LIST | VIEW | CROP | DOWNLOAD (DB CHECK)
+  resource_type         String
+  resource_id           String   @db.Uuid
+  application_id        String   @db.Uuid
+  document_id           String?  @db.Uuid
+  route                 String
+  request_id            String?
+  jurisdiction_state    String?
+  jurisdiction_district String?
+
+  @@index([document_id, accessed_at(sort: Desc)], map: "document_access_log_document_idx")
+  @@index([application_id, accessed_at(sort: Desc)], map: "document_access_log_application_idx")
+  @@index([actor_account_id, accessed_at(sort: Desc)], map: "document_access_log_actor_idx")
+  @@map("document_access_log")
+}
+
+/// Phase 17 (C): one data-retention run - cutoffs and counts only, never a
+/// row id or a value. Written only by retention_apply() as the SYSTEM actor;
+/// insert-only and audited.
+model RetentionRun {
+  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  trigger                 String // SCHEDULE | MANUAL (DB CHECK)
+  triggered_by_account_id String?  @db.Uuid
+  dry_run                 Boolean
+  run_at                  DateTime @db.Timestamptz(6)
+  policy                  Json
+  counts                  Json
+  created_at              DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([run_at(sort: Desc)], map: "retention_runs_run_at_idx")
+  @@map("retention_runs")
+}
+
+/// Phase 14 loose ends (Part C): an applicant's unsubmitted application.
+/// Owner-only RLS; not an application, so no queue, analytics funnel, fraud
+/// detector or selection sees it. Frozen once SUBMITTED (trigger).
+model ApplicationDraft {
+  id                       String    @id @default(uuid()) @db.Uuid
+  applicant_id             String    @db.Uuid
+  status                   String    @default("DRAFT") // DRAFT | SUBMITTED (DB CHECK)
+  scheme_version_id        String?   @db.Uuid
+  academic_year            String?
+  institution_name         String?
+  institution_code         String?
+  course_name              String?
+  course_year              Int?
+  is_hosteller             Boolean?
+  declared                 Json      @default("{}")
+  submitted_application_id String?   @db.Uuid
+  submitted_at             DateTime? @db.Timestamptz(6)
+  created_at               DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@index([applicant_id, updated_at(sort: Desc)], map: "application_drafts_applicant_idx")
+  @@map("application_drafts")
+}
+
+/// Phase 14 loose ends (Part E): an Aadhaar authentication outcome. The
+/// number is never stored: keyed hash + last four digits only (DB CHECKs).
+model AadhaarAuthentication {
+  id               String   @id @default(uuid()) @db.Uuid
+  applicant_id     String   @db.Uuid
+  outcome          String // AUTHENTICATED | NOT_AUTHENTICATED (DB CHECK)
+  error_code       String?
+  uid_hmac         String
+  uid_last4        String
+  hmac_key_version Int
+  adapter_mode     String
+  txn_id           String
+  consent_given_at DateTime @db.Timestamptz(6)
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([applicant_id, created_at(sort: Desc)], map: "aadhaar_authentications_applicant_idx")
+  @@index([uid_hmac], map: "aadhaar_authentications_uid_hmac_idx")
+  @@map("aadhaar_authentications")
+}
+
+/// Phase 16 C1 (M50): an officer's notice language (audited; no personal data).
+model OfficerPreference {
+  officer_id            String   @id @db.Uuid
+  /// Row id for the audit trigger (migration 20261002091000).
+  id                    String   @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  preferred_language    String
+  updated_by_account_id String   @db.Uuid
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("officer_preferences")
+}
+
+/// Phase 17 B2: consent records (insert-only; withdrawal is a new row).
+model ConsentRecord {
+  id                     String   @id @default(uuid()) @db.Uuid
+  applicant_id           String   @db.Uuid
+  purpose                String
+  notice_version         String
+  language               String
+  status                 String // GIVEN | WITHDRAWN (DB CHECK)
+  method                 String // ONLINE_FORM (DB CHECK)
+  recorded_by_account_id String   @db.Uuid
+  created_at             DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([applicant_id, purpose, created_at(sort: Desc)], map: "consent_records_applicant_idx")
+  @@map("consent_records")
+}
+
+/// Phase 17 B4: a correction request (the requested value is encrypted).
+model CorrectionRequest {
+  id                        String   @id @default(uuid()) @db.Uuid
+  applicant_id              String   @db.Uuid
+  field                     String
+  requested_value_encrypted Bytes
+  reason                    String
+  supporting_document_id    String?  @db.Uuid
+  status                    String   @default("OPEN") // OPEN | APPROVED | REJECTED
+  jurisdiction_state        String
+  jurisdiction_district     String?
+  created_at                DateTime @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@index([applicant_id, created_at(sort: Desc)], map: "correction_requests_applicant_idx")
+  @@map("correction_requests")
+}
+
+/// Phase 17 B4: insert-only decision on a correction request.
+model CorrectionDecision {
+  id         String   @id @default(uuid()) @db.Uuid
+  request_id String   @unique(map: "correction_decisions_one_per_request_key") @db.Uuid
+  officer_id String   @db.Uuid
+  decision   String // APPROVE | REJECT
+  reason     String
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("correction_decisions")
+}
+
+/// Phase 17 B5: an erasure request, recorded only.
+model ErasureRequest {
+  id           String   @id @default(uuid()) @db.Uuid
+  applicant_id String   @db.Uuid
+  status       String   @default("RECORDED")
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([applicant_id, created_at(sort: Desc)], map: "erasure_requests_applicant_idx")
+  @@map("erasure_requests")
+}

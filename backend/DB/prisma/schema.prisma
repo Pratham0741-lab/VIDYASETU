@@ -1,0 +1,391 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------
+// 1. Core IAM & Organization Models
+// ---------------------------------------------------------
+
+model Role {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique // e.g. SUPER_ADMIN, MINISTRY_OFFICER, STATE_NODAL_OFFICER, DISTRICT_NODAL_OFFICER, INSTITUTE_NODAL_OFFICER
+  description String?
+  officers    Officer[]
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@map("roles")
+}
+
+model Officer {
+  id                    String           @id @default(uuid()) @db.Uuid
+  user_id               String           @unique @db.Uuid // Maps to Supabase auth.users.id
+  email                 String           @unique
+  name                  String
+  phone                 String?
+  role_id               String           @db.Uuid
+  role                  Role             @relation(fields: [role_id], references: [id])
+  jurisdiction_state    String? // null for Central/Ministry officers
+  jurisdiction_district String? // null for State or Central officers
+  institution_code      String? // AISHE / U-DISE / NCVT code for Institute Nodal Officers
+  is_active             Boolean          @default(true)
+  created_at            DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime         @updatedAt @db.Timestamptz(6)
+
+  assigned_applications Application[]    @relation("AssignedOfficer")
+  decision_records      DecisionRecord[]
+  deficiencies_flagged  Deficiency[]
+  scores_evaluated      Score[]
+  audit_logs            AuditLog[]
+
+  @@index([jurisdiction_state, jurisdiction_district])
+  @@map("officers")
+}
+
+// ---------------------------------------------------------
+// 2. Applicant & Scheme Models
+// ---------------------------------------------------------
+
+model Applicant {
+  id                    String        @id @default(uuid()) @db.Uuid
+  user_id               String?       @unique @db.Uuid // Maps to Supabase auth.users.id if student registers
+  first_name            String
+  last_name             String
+  email                 String?
+  phone                 String?
+  gender                String?
+  dob                   DateTime?     @db.Date
+  category              String // e.g. "ST", "PVTG"
+  pvtg_group            String? // e.g. "Birhor", "Baiga", "Chenchu"
+  is_disabled           Boolean       @default(false)
+  disability_type       String?
+  disability_percentage Float?
+  domicile_state        String
+  domicile_district     String?
+
+  // Sensitive PII fields stored as encrypted binary (@db.ByteA).
+  // Encrypted transparently at the application layer via Prisma Client Extension
+  // in lib/crypto/pii-extension.ts using AES-256-GCM, not via DB functions.
+  caste_cert_number     Bytes
+  income                Bytes
+  bank_account          Bytes
+
+  applications          Application[]
+  created_at            DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime      @updatedAt @db.Timestamptz(6)
+
+  @@index([category, domicile_state])
+  @@map("applicants")
+}
+
+model Scheme {
+  id          String          @id @default(uuid()) @db.Uuid
+  code        String          @unique // e.g. PRE_MATRIC, POST_MATRIC, TOP_CLASS, NFST, NOS
+  name        String
+  department  String // e.g. "Scholarship Division, Ministry of Tribal Affairs"
+  description String?
+  type        String // "CENTRALLY_SPONSORED" | "CENTRAL_SECTOR"
+  portal_url  String?
+  is_active   Boolean         @default(true)
+  created_at  DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime        @updatedAt @db.Timestamptz(6)
+
+  versions    SchemeVersion[]
+  applications Application[]
+
+  @@map("schemes")
+}
+
+model SchemeVersion {
+  id                    String        @id @default(uuid()) @db.Uuid
+  scheme_id             String        @db.Uuid
+  scheme                Scheme        @relation(fields: [scheme_id], references: [id], onDelete: Restrict)
+  version_no            Int
+  effective_from        DateTime      @db.Date
+  effective_to          DateTime?     @db.Date
+  status                String        @default("active") // "active" | "archived"
+  config                Json // JSONB column storing eligibility rules & benefit structure
+  source_document       String?
+  source_url            String?
+  extraction_confidence String?
+  extraction_notes      String?
+  created_at            DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime      @updatedAt @db.Timestamptz(6)
+
+  applications          Application[]
+
+  @@unique([scheme_id, version_no])
+  @@index([scheme_id, status])
+  @@map("scheme_versions")
+}
+
+// ---------------------------------------------------------
+// 3. Application Lifecycle Models
+// ---------------------------------------------------------
+
+model Application {
+  id                    String        @id @default(uuid()) @db.Uuid
+  application_no        String        @unique
+  applicant_id          String        @db.Uuid
+  applicant             Applicant     @relation(fields: [applicant_id], references: [id], onDelete: Restrict)
+  scheme_id             String        @db.Uuid
+  scheme                Scheme        @relation(fields: [scheme_id], references: [id], onDelete: Restrict)
+
+  // Required FK to SchemeVersion: set upon submission and frozen.
+  // Note: Freeze enforcement (immutable after creation) is guaranteed at DB trigger level (prevent_scheme_version_change), not Prisma.
+  scheme_version_id     String        @db.Uuid
+  scheme_version        SchemeVersion @relation(fields: [scheme_version_id], references: [id], onDelete: Restrict)
+
+  academic_year         String // e.g. "2024-25"
+  current_stage         String        @default("SUBMITTED") // SUBMITTED, INO_VERIFIED, DNO_VERIFIED, SNO_VERIFIED, MINISTRY_APPROVED, DEFECTIVE, REJECTED, DISBURSED
+  status                String        @default("PENDING") // PENDING, UNDER_REVIEW, DEFECTIVE, APPROVED, REJECTED, DISBURSED
+
+  // Jurisdictional routing attributes
+  jurisdiction_state    String
+  jurisdiction_district String?
+  institution_name      String?
+  institution_code      String? // AISHE / U-DISE / NCVT / QS Rank
+  course_name           String?
+  course_year           Int?
+  is_hosteller          Boolean       @default(false)
+
+  assigned_officer_id   String?       @db.Uuid
+  assigned_officer      Officer?      @relation("AssignedOfficer", fields: [assigned_officer_id], references: [id], onDelete: SetNull)
+
+  submitted_at          DateTime      @default(now()) @db.Timestamptz(6)
+  created_at            DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime      @updatedAt @db.Timestamptz(6)
+
+  documents             Document[]
+  decision_records      DecisionRecord[]
+  deficiencies          Deficiency[]
+  workflow_transitions  WorkflowTransition[]
+  scores                Score[]
+  selections            Selection[]
+  disbursements         Disbursement[]
+  renewals              Renewal[]
+
+  @@index([jurisdiction_state, jurisdiction_district, status])
+  @@index([assigned_officer_id, status, submitted_at])
+  @@map("applications")
+}
+
+// ---------------------------------------------------------
+// 4. Documents & Verification Models
+// ---------------------------------------------------------
+
+model Document {
+  id                     String               @id @default(uuid()) @db.Uuid
+  application_id         String               @db.Uuid
+  application            Application          @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  document_type          String // CASTE_CERTIFICATE, INCOME_CERTIFICATE, MARKSHEET, FEE_RECEIPT, BANK_PASSBOOK, BONAFIDE, DISABILITY_CERT, OFFER_LETTER
+  file_name              String
+  file_path              String
+  file_size_bytes        Int?
+  mime_type              String?
+  verification_status    String               @default("PENDING") // PENDING, VERIFIED, REJECTED, DEFECTIVE
+  verified_by_officer_id String?              @db.Uuid
+  verified_at            DateTime?            @db.Timestamptz(6)
+  created_at             DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime             @updatedAt @db.Timestamptz(6)
+
+  extractions            DocumentExtraction[]
+
+  @@index([application_id, document_type])
+  @@map("documents")
+}
+
+model DocumentExtraction {
+  id                String    @id @default(uuid()) @db.Uuid
+  document_id       String    @db.Uuid
+  document          Document  @relation(fields: [document_id], references: [id], onDelete: Cascade)
+  extracted_data    Json
+  confidence_score  Float?
+  extraction_engine String? // "APPLE_VISION", "TESSERACT", "AZURE_DOC_INTEL"
+  is_verified       Boolean   @default(false)
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([document_id])
+  @@map("document_extractions")
+}
+
+// ---------------------------------------------------------
+// 5. Governance, Decisions & Deficiencies
+// ---------------------------------------------------------
+
+model DecisionRecord {
+  id             String      @id @default(uuid()) @db.Uuid
+  application_id String      @db.Uuid
+  application    Application @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  officer_id     String      @db.Uuid
+  officer        Officer     @relation(fields: [officer_id], references: [id], onDelete: Restrict)
+  decision       String // "APPROVE", "REJECT", "DEFECT", "ESCALATE", "DISBURSE"
+  stage          String // "INSTITUTE", "DISTRICT", "STATE", "MINISTRY"
+  remarks        String?
+  reasons        Json?
+  created_at     DateTime    @default(now()) @db.Timestamptz(6)
+
+  @@index([application_id, stage])
+  @@map("decision_records")
+}
+
+model Deficiency {
+  id               String      @id @default(uuid()) @db.Uuid
+  application_id   String      @db.Uuid
+  application      Application @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  officer_id       String      @db.Uuid
+  officer          Officer     @relation(fields: [officer_id], references: [id], onDelete: Restrict)
+  code             String // e.g. "DEF_INCOME_EXPIRED", "DEF_CASTE_UNCLEAR"
+  title            String
+  description      String
+  status           String      @default("OPEN") // OPEN, RESOLVED, WAIVED
+  resolved_at      DateTime?   @db.Timestamptz(6)
+  student_response String?
+  created_at       DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime    @updatedAt @db.Timestamptz(6)
+
+  @@index([application_id, status])
+  @@map("deficiencies")
+}
+
+model WorkflowTransition {
+  id             String      @id @default(uuid()) @db.Uuid
+  application_id String      @db.Uuid
+  application    Application @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  from_stage     String
+  to_stage       String
+  triggered_by   String // Officer UUID or "SYSTEM"
+  trigger_action String
+  metadata       Json?
+  created_at     DateTime    @default(now()) @db.Timestamptz(6)
+
+  @@index([application_id, created_at])
+  @@map("workflow_transitions")
+}
+
+// ---------------------------------------------------------
+// 6. Merit, Selection, Disbursement & Renewal
+// ---------------------------------------------------------
+
+model Score {
+  id               String      @id @default(uuid()) @db.Uuid
+  application_id   String      @db.Uuid
+  application      Application @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  officer_id       String?     @db.Uuid
+  officer          Officer?    @relation(fields: [officer_id], references: [id], onDelete: SetNull)
+  score_type       String // "MERIT_PG", "UGC_NET_JRF", "QS_WORLD_RANKING", "INTERVIEW"
+  score_value      Float
+  normalized_score Float?
+  weightage        Float?
+  breakdown        Json?
+  created_at       DateTime    @default(now()) @db.Timestamptz(6)
+
+  @@index([application_id, score_type])
+  @@map("scores")
+}
+
+model Selection {
+  id                    String      @id @default(uuid()) @db.Uuid
+  application_id        String      @db.Uuid
+  application           Application @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  scheme_code           String
+  academic_year         String
+  merit_rank            Int?
+  selection_category    String // "ST_OTHERS", "PVTG", "DIVYANGJAN", "FEMALE"
+  selection_status      String      @default("PROVISIONAL") // "PROVISIONAL", "CONFIRMED", "WAITLISTED", "WITHDRAWN"
+  allotted_slot         Int?
+  notified_in_merit_list String?
+  selection_date        DateTime    @default(now()) @db.Date
+  created_at            DateTime    @default(now()) @db.Timestamptz(6)
+
+  @@index([scheme_code, academic_year, selection_status])
+  @@map("selections")
+}
+
+model Disbursement {
+  id                    String      @id @default(uuid()) @db.Uuid
+  application_id        String      @db.Uuid
+  application           Application @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  installment_no        Int
+  financial_year        String // e.g. "2024-25"
+  component_type        String // "MAINTENANCE", "TUITION_FEE", "BOOKS_STATIONERY", "COMPUTER", "CONTINGENCY", "DISABILITY"
+  amount                Float
+  beneficiary_type      String // "STUDENT_DBT", "INSTITUTE_PFMS"
+  payment_mode          String      @default("PFMS_DBT") // PFMS_DBT, AEPS, PFMS_INSTITUTE, MEA_MISSION
+  status                String      @default("PENDING") // PENDING, PROCESSING, SUCCESS, FAILED, REFUNDED
+  transaction_reference String?
+  utr_number            String?
+  disbursed_at          DateTime?   @db.Timestamptz(6)
+  failure_reason        String?
+  created_at            DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime    @updatedAt @db.Timestamptz(6)
+
+  @@index([application_id, status])
+  @@index([financial_year, status])
+  @@map("disbursements")
+}
+
+model Renewal {
+  id                    String      @id @default(uuid()) @db.Uuid
+  parent_application_id String      @db.Uuid
+  parent_application    Application @relation(fields: [parent_application_id], references: [id], onDelete: Cascade)
+  academic_year         String
+  academic_year_number  Int // e.g. 2, 3, 4
+  passed_previous_year  Boolean
+  percentage_obtained   Float?
+  marksheet_path        String?
+  verification_status   String      @default("PENDING")
+  verified_at           DateTime?   @db.Timestamptz(6)
+  created_at            DateTime    @default(now()) @db.Timestamptz(6)
+
+  @@index([parent_application_id])
+  @@map("renewals")
+}
+
+// ---------------------------------------------------------
+// 7. Communication & Audit Trail Models
+// ---------------------------------------------------------
+
+model NoticeTemplate {
+  id               String   @id @default(uuid()) @db.Uuid
+  code             String   @unique // e.g. DEFICIENCY_NOTICE, PROVISIONAL_SELECTION, DISBURSEMENT_SUCCESS, AWARD_LETTER
+  title            String
+  scheme_code      String?
+  channel          String // "SMS", "EMAIL", "PORTAL", "PDF"
+  subject_template String?
+  body_template    String
+  variables        Json? // Allowed variables e.g. ["student_name", "application_no", "amount"]
+  is_active        Boolean  @default(true)
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("notice_templates")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  table_name  String
+  record_id   String   @db.Uuid
+  action      String // "INSERT", "UPDATE", "DELETE"
+  actor_id    String?  @db.Uuid
+  actor_role  String?
+  ip_address  String?
+  row_data    Json
+  prev_hash   String?
+  record_hash String // SHA-256 hash: digest(coalesce(prev_hash, '') || row_data::text, 'sha256')
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  officer     Officer? @relation(fields: [actor_id], references: [id], onDelete: SetNull)
+
+  @@index([table_name, record_id])
+  @@index([created_at])
+  @@map("audit_logs")
+}

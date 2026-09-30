@@ -1,0 +1,51 @@
+# secrets and local state
+.demo-seed/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.dump
+*.sql.gz
+*.zip
+*.log
+
+# agent, editor and OS files
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# scratch and proof folders at the repo root
+/.*/
+!/.github/
+
+# old repo copies
+**/.git.old/
+**/.old-ml-backup/
+
+# dependencies and build output
+node_modules/
+dist/
+build/
+coverage/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.tsbuildinfo
+
+# real scanned documents (real people's data): never commit
+**/10TH_CERTIFICATES/
+**/12TH_CERTIFICATES/
+**/ADMISSION_LETTERS/
+**/BANK_PASSBOOKS/
+**/BONAFIDE_CERTIFICATES/
+**/DISABILITY_CERTIFICATES/
+**/FEE_STRUCTURE/
+**/INCOME_CERTIFICATES/
+**/ST_CERTIFICATES/

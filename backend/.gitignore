@@ -1,0 +1,39 @@
+# secrets / local config
+.env
+.env.*
+!.env.example
+.env.local
+
+# api
+api/node_modules/
+api/dist/
+api/coverage/
+api/*.tsbuildinfo
+api/openapi.json
+
+# ml
+ml/.venv/
+ml/**/__pycache__/
+ml/.pytest_cache/
+ml/.ruff_cache/
+ml/*.egg-info/
+ml/build/
+ml/dist/
+
+# editors / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# sample document images (local test material; never committed - Phase 13B D3)
+docs/10TH_CERTIFICATES/
+docs/12TH_CERTIFICATES/
+docs/ADMISSION_LETTERS/
+docs/BANK_PASSBOOKS/
+docs/BONAFIDE_CERTIFICATES/
+docs/DISABILITY_CERTIFICATES/
+docs/FEE_STRUCTURE/
+docs/INCOME_CERTIFICATES/
+docs/ST_CERTIFICATES/

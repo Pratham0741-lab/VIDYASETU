@@ -1,0 +1,2370 @@
+[
+  {
+    "scheme_code": "PRE_MATRIC",
+    "version_no": 1,
+    "effective_from": "2012-07-01",
+    "effective_to": "2019-11-30",
+    "config": {
+      "rules": [
+        {
+          "id": "income_ceiling",
+          "type": "eligibility",
+          "expr": "applicant.family_income_annual <= params.income_ceiling",
+          "params": {
+            "income_ceiling": 200000,
+            "notes": "Scholarships paid to students whose parents'/guardians' income from all sources does not exceed Rs. 2,00,000/- per annum. Only parental income considered while either parent is alive; guardian's income considered only upon death of both parents."
+          },
+          "doc_refs": [
+            "income_certificate"
+          ],
+          "message_key": "err.income_ceiling_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Family Income Ceiling from all sources"
+          }
+        },
+        {
+          "id": "category_match",
+          "type": "eligibility",
+          "expr": "applicant.category in params.allowed_categories",
+          "params": {
+            "allowed_categories": [
+              "ST"
+            ]
+          },
+          "doc_refs": [
+            "caste_certificate"
+          ],
+          "message_key": "err.category_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Target Beneficiary Category (ST / PVTG)"
+          }
+        },
+        {
+          "id": "education_level_match",
+          "type": "eligibility",
+          "expr": "applicant.education_level matches params.eligible_level",
+          "params": {
+            "eligible_level": "Classes IX and X (Regular, full time students in Government School or recognized by Govt./Central/State Board of Secondary Education)"
+          },
+          "doc_refs": [
+            "marksheet",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.education_level_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Eligible Education Stage & Institution Criteria"
+          }
+        },
+        {
+          "id": "pre_matric_class_tenure",
+          "type": "eligibility",
+          "expr": "['IX', 'X'].includes(applicant.class_level) && applicant.academic_year_number <= 2",
+          "params": {
+            "eligible_classes": [
+              "IX",
+              "X"
+            ],
+            "max_academic_years": 2,
+            "annual_entitlement_months": 10,
+            "source_text": "10 months in an academic year"
+          },
+          "doc_refs": [
+            "bonafide_certificate"
+          ],
+          "message_key": "err.pre_matric_class_or_tenure_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Classes IX and X (Maximum 2 academic years; 10 months/year)"
+          }
+        }
+      ],
+      "benefits": [
+        {
+          "id": "day_scholar_entitlement",
+          "condition": "applicant.is_hosteller == false",
+          "description": "Monthly maintenance allowance and annual books/adhoc grant for day scholars",
+          "amount_monthly": 150,
+          "amount_annual": 2250,
+          "currency": "INR",
+          "duration_months": 10,
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "monthly_maintenance_allowance_inr": 150,
+            "ten_months_maintenance_allowance_inr": 1500,
+            "books_and_adhoc_grant_annual_inr": 750,
+            "total_annual_entitlement_inr": 2250
+          }
+        },
+        {
+          "id": "hosteller_entitlement",
+          "condition": "applicant.is_hosteller == true",
+          "description": "Monthly maintenance allowance and annual books/adhoc grant for hostellers",
+          "amount_monthly": 350,
+          "amount_annual": 4500,
+          "currency": "INR",
+          "duration_months": 10,
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "monthly_maintenance_allowance_inr": 350,
+            "ten_months_maintenance_allowance_inr": 3500,
+            "books_and_adhoc_grant_annual_inr": 1000,
+            "total_annual_entitlement_inr": 4500
+          }
+        },
+        {
+          "id": "disability_allowance",
+          "condition": "applicant.is_disabled == true",
+          "description": "Special allowances for divyangjan (reader, escort, transport, coaching allowances)",
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "monthly_reader_allowance_blind_inr": 160,
+            "monthly_transport_allowance_inr": 160,
+            "monthly_escort_allowance_severely_disabled_inr": 160,
+            "monthly_helper_allowance_hosteller_inr": 160,
+            "monthly_coaching_allowance_inr": 240
+          }
+        }
+      ],
+      "required_documents": [
+        "ST caste certificate issued by competent authority",
+        "Parent/Guardian income declaration/certificate",
+        "Proof of regular full-time study in recognized school",
+        "Bank account details (Account number, IFSC code)",
+        "Disability certificate issued by competent medical authority (if applicable)"
+      ],
+      "fund_sharing_ratio": "100% Central Assistance over and above Committed Liability for States; 100% for UTs without legislature",
+      "metadata": {
+        "source_document": "guidelines-premateic-wef-1-7-2012.pdf",
+        "source_url": "https://tribal.nic.in/downloads/guidelines/pre-matric/EDUGuidelines.pdf",
+        "extraction_confidence": "high",
+        "extraction_notes": "Extracted from official Guidelines Annexure-1 dated 01-07-2012. Defines original rates of Rs. 150/month (day scholar) and Rs. 350/month (hosteller) with Rs. 2,00,000 annual income ceiling.",
+        "data_verified": false
+      }
+    },
+    "source_document": "guidelines-premateic-wef-1-7-2012.pdf",
+    "source_url": "https://tribal.nic.in/downloads/guidelines/pre-matric/EDUGuidelines.pdf",
+    "extraction_confidence": "high",
+    "extraction_notes": "Extracted from official Guidelines Annexure-1 dated 01-07-2012. Defines original rates of Rs. 150/month (day scholar) and Rs. 350/month (hosteller) with Rs. 2,00,000 annual income ceiling."
+  },
+  {
+    "scheme_code": "PRE_MATRIC",
+    "version_no": 2,
+    "effective_from": "2019-12-01",
+    "effective_to": "2020-04-28",
+    "config": {
+      "rules": [
+        {
+          "id": "income_ceiling",
+          "type": "eligibility",
+          "expr": "applicant.family_income_annual <= params.income_ceiling",
+          "params": {
+            "income_ceiling": 200000,
+            "notes": "Unchanged at Rs. 2,00,000/- per annum during this interim period prior to the April 2020 revision."
+          },
+          "doc_refs": [
+            "income_certificate"
+          ],
+          "message_key": "err.income_ceiling_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Family Income Ceiling from all sources"
+          }
+        },
+        {
+          "id": "category_match",
+          "type": "eligibility",
+          "expr": "applicant.category in params.allowed_categories",
+          "params": {
+            "allowed_categories": [
+              "ST"
+            ]
+          },
+          "doc_refs": [
+            "caste_certificate"
+          ],
+          "message_key": "err.category_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Target Beneficiary Category (ST / PVTG)"
+          }
+        },
+        {
+          "id": "education_level_match",
+          "type": "eligibility",
+          "expr": "applicant.education_level matches params.eligible_level",
+          "params": {
+            "eligible_level": "Classes IX and X"
+          },
+          "doc_refs": [
+            "marksheet",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.education_level_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Eligible Education Stage & Institution Criteria"
+          }
+        },
+        {
+          "id": "pre_matric_class_tenure",
+          "type": "eligibility",
+          "expr": "['IX', 'X'].includes(applicant.class_level) && applicant.academic_year_number <= 2",
+          "params": {
+            "eligible_classes": [
+              "IX",
+              "X"
+            ],
+            "max_academic_years": 2,
+            "annual_entitlement_months": 10,
+            "source_text": "10 months in an academic year"
+          },
+          "doc_refs": [
+            "bonafide_certificate"
+          ],
+          "message_key": "err.pre_matric_class_or_tenure_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Classes IX and X (Maximum 2 academic years; 10 months/year)"
+          }
+        }
+      ],
+      "benefits": [
+        {
+          "id": "day_scholar_entitlement",
+          "condition": "applicant.is_hosteller == false",
+          "description": "Monthly maintenance allowance and annual books/adhoc grant for day scholars",
+          "amount_monthly": 225,
+          "amount_annual": 3000,
+          "currency": "INR",
+          "duration_months": 10,
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "monthly_maintenance_allowance_inr": 225,
+            "ten_months_maintenance_allowance_inr": 2250,
+            "books_and_adhoc_grant_annual_inr": 750,
+            "total_annual_entitlement_inr": 3000
+          }
+        },
+        {
+          "id": "hosteller_entitlement",
+          "condition": "applicant.is_hosteller == true",
+          "description": "Monthly maintenance allowance and annual books/adhoc grant for hostellers",
+          "amount_monthly": 525,
+          "amount_annual": 6250,
+          "currency": "INR",
+          "duration_months": 10,
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "monthly_maintenance_allowance_inr": 525,
+            "ten_months_maintenance_allowance_inr": 5250,
+            "books_and_adhoc_grant_annual_inr": 1000,
+            "total_annual_entitlement_inr": 6250
+          }
+        }
+      ],
+      "required_documents": [
+        "ST caste certificate issued by competent authority",
+        "Parent/Guardian income certificate",
+        "Proof of admission / study in recognized school",
+        "Bank account details"
+      ],
+      "fund_sharing_ratio": "100% Central Assistance over committed liability",
+      "metadata": {
+        "source_document": "lncrease-in-the-scholarship-amount-under-the-centrally-sponsored-scheme-of-pre-matric.pdf",
+        "source_url": "https://tribal.nic.in/downloads/guidelines/pre-matric/IncreaseincholarshipamtunderPrenPMS20Dec2019.pdf",
+        "extraction_confidence": "high",
+        "extraction_notes": "Official notification No. 19012/03/2017-Sch/Edu dated 20th December 2019: This document revises monthly scholarship amount from Rs. 150 to Rs. 225 p.m. for day scholars and from Rs. 350 to Rs. 525 p.m. for hostellers, effective 01.12.2019.",
+        "data_verified": false
+      }
+    },
+    "source_document": "lncrease-in-the-scholarship-amount-under-the-centrally-sponsored-scheme-of-pre-matric.pdf",
+    "source_url": "https://tribal.nic.in/downloads/guidelines/pre-matric/IncreaseincholarshipamtunderPrenPMS20Dec2019.pdf",
+    "extraction_confidence": "high",
+    "extraction_notes": "Official notification No. 19012/03/2017-Sch/Edu dated 20th December 2019: This document revises monthly scholarship amount from Rs. 150 to Rs. 225 p.m. for day scholars and from Rs. 350 to Rs. 525 p.m. for hostellers, effective 01.12.2019."
+  },
+  {
+    "scheme_code": "PRE_MATRIC",
+    "version_no": 3,
+    "effective_from": "2020-04-29",
+    "effective_to": "2022-10-16",
+    "config": {
+      "rules": [
+        {
+          "id": "income_ceiling",
+          "type": "eligibility",
+          "expr": "applicant.family_income_annual <= params.income_ceiling",
+          "params": {
+            "income_ceiling": 250000,
+            "notes": "Annual parental income ceiling increased from Rs. 2.00 lakh to Rs. 2.50 lakh per annum w.e.f academic session 2020-21."
+          },
+          "doc_refs": [
+            "income_certificate"
+          ],
+          "message_key": "err.income_ceiling_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Family Income Ceiling from all sources"
+          }
+        },
+        {
+          "id": "category_match",
+          "type": "eligibility",
+          "expr": "applicant.category in params.allowed_categories",
+          "params": {
+            "allowed_categories": [
+              "ST"
+            ]
+          },
+          "doc_refs": [
+            "caste_certificate"
+          ],
+          "message_key": "err.category_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Target Beneficiary Category (ST / PVTG)"
+          }
+        },
+        {
+          "id": "education_level_match",
+          "type": "eligibility",
+          "expr": "applicant.education_level matches params.eligible_level",
+          "params": {
+            "eligible_level": "Classes IX and X"
+          },
+          "doc_refs": [
+            "marksheet",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.education_level_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Eligible Education Stage & Institution Criteria"
+          }
+        },
+        {
+          "id": "pre_matric_class_tenure",
+          "type": "eligibility",
+          "expr": "['IX', 'X'].includes(applicant.class_level) && applicant.academic_year_number <= 2",
+          "params": {
+            "eligible_classes": [
+              "IX",
+              "X"
+            ],
+            "max_academic_years": 2,
+            "annual_entitlement_months": 10,
+            "source_text": "10 months in an academic year"
+          },
+          "doc_refs": [
+            "bonafide_certificate"
+          ],
+          "message_key": "err.pre_matric_class_or_tenure_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Classes IX and X (Maximum 2 academic years; 10 months/year)"
+          }
+        }
+      ],
+      "benefits": [
+        {
+          "id": "day_scholar_entitlement",
+          "condition": "applicant.is_hosteller == false",
+          "description": "Monthly maintenance allowance and annual books/adhoc grant for day scholars",
+          "amount_monthly": 225,
+          "amount_annual": 3000,
+          "currency": "INR",
+          "duration_months": 10,
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "monthly_maintenance_allowance_inr": 225,
+            "ten_months_maintenance_allowance_inr": 2250,
+            "books_and_adhoc_grant_annual_inr": 750,
+            "total_annual_entitlement_inr": 3000
+          }
+        },
+        {
+          "id": "hosteller_entitlement",
+          "condition": "applicant.is_hosteller == true",
+          "description": "Monthly maintenance allowance and annual books/adhoc grant for hostellers",
+          "amount_monthly": 525,
+          "amount_annual": 6250,
+          "currency": "INR",
+          "duration_months": 10,
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "monthly_maintenance_allowance_inr": 525,
+            "ten_months_maintenance_allowance_inr": 5250,
+            "books_and_adhoc_grant_annual_inr": 1000,
+            "total_annual_entitlement_inr": 6250
+          }
+        }
+      ],
+      "required_documents": [
+        "ST caste certificate issued by competent authority",
+        "Parent/Guardian income certificate (within Rs. 2.50 lakh)",
+        "Proof of regular full-time study in recognized school",
+        "Bank account details"
+      ],
+      "fund_sharing_ratio": "Centrally Sponsored Scheme assistance",
+      "metadata": {
+        "source_document": "upward-revision-of-annual-parantal-income-pre-matric.pdf",
+        "source_url": "https://tribal.nic.in/downloads/guidelines/pre-matric/upward revision of annual parantal income Pre-Matric.pdf",
+        "extraction_confidence": "high",
+        "extraction_notes": "Official notification No. 19012/03/2017-Sch. dated 29th April 2020: This document revises annual parental income ceiling from Rs. 2.00 lakh to Rs. 2.50 lakh per annum, effective academic year 2020-21.",
+        "data_verified": false
+      }
+    },
+    "source_document": "upward-revision-of-annual-parantal-income-pre-matric.pdf",
+    "source_url": "https://tribal.nic.in/downloads/guidelines/pre-matric/upward revision of annual parantal income Pre-Matric.pdf",
+    "extraction_confidence": "high",
+    "extraction_notes": "Official notification No. 19012/03/2017-Sch. dated 29th April 2020: This document revises annual parental income ceiling from Rs. 2.00 lakh to Rs. 2.50 lakh per annum, effective academic year 2020-21."
+  },
+  {
+    "scheme_code": "PRE_MATRIC",
+    "version_no": 4,
+    "effective_from": "2022-10-17",
+    "effective_to": null,
+    "config": {
+      "rules": [
+        {
+          "id": "income_ceiling",
+          "type": "eligibility",
+          "expr": "applicant.family_income_annual <= params.income_ceiling",
+          "params": {
+            "income_ceiling": 250000,
+            "notes": "Applicant student's family income from all sources should not exceed Rs. 2,50,000/- per annum. Combined income of father and mother taken; sibling/other member income excluded. Orphan supported by guardian exempted from income limit. Income certificate taken once at admission to Class IX, valid for Class X."
+          },
+          "doc_refs": [
+            "income_certificate"
+          ],
+          "message_key": "err.income_ceiling_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Family Income Ceiling from all sources"
+          }
+        },
+        {
+          "id": "category_match",
+          "type": "eligibility",
+          "expr": "applicant.category in params.allowed_categories",
+          "params": {
+            "allowed_categories": [
+              "ST"
+            ]
+          },
+          "doc_refs": [
+            "caste_certificate"
+          ],
+          "message_key": "err.category_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Target Beneficiary Category (ST / PVTG)"
+          }
+        },
+        {
+          "id": "education_level_match",
+          "type": "eligibility",
+          "expr": "applicant.education_level matches params.eligible_level",
+          "params": {
+            "eligible_level": "Classes IX and X (Government School or recognized by Government/Central/State Board of Secondary Education)"
+          },
+          "doc_refs": [
+            "marksheet",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.education_level_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Eligible Education Stage & Institution Criteria"
+          }
+        },
+        {
+          "id": "pre_matric_class_tenure",
+          "type": "eligibility",
+          "expr": "['IX', 'X'].includes(applicant.class_level) && applicant.academic_year_number <= 2",
+          "params": {
+            "eligible_classes": [
+              "IX",
+              "X"
+            ],
+            "max_academic_years": 2,
+            "annual_entitlement_months": 10,
+            "source_text": "10 months in an academic year for scholarship; 12 months for Additional Disability Allowance"
+          },
+          "doc_refs": [
+            "bonafide_certificate"
+          ],
+          "message_key": "err.pre_matric_class_or_tenure_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Classes IX and X (Maximum 2 academic years; 10 months/year)"
+          }
+        }
+      ],
+      "benefits": [
+        {
+          "id": "day_scholar_entitlement",
+          "condition": "applicant.is_hosteller == false",
+          "description": "Monthly maintenance allowance and annual books/adhoc grant for day scholars",
+          "amount_monthly": 225,
+          "amount_annual": 3000,
+          "currency": "INR",
+          "duration_months": 10,
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "monthly_maintenance_allowance_inr": 225,
+            "ten_months_maintenance_allowance_inr": 2250,
+            "books_and_adhoc_grant_annual_inr": 750,
+            "total_annual_entitlement_inr": 3000
+          }
+        },
+        {
+          "id": "hosteller_entitlement",
+          "condition": "applicant.is_hosteller == true",
+          "description": "Monthly maintenance allowance and annual books/adhoc grant for hostellers",
+          "amount_monthly": 525,
+          "amount_annual": 6250,
+          "currency": "INR",
+          "duration_months": 10,
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "monthly_maintenance_allowance_inr": 525,
+            "ten_months_maintenance_allowance_inr": 5250,
+            "books_and_adhoc_grant_annual_inr": 1000,
+            "total_annual_entitlement_inr": 6250
+          }
+        },
+        {
+          "id": "disability_allowance",
+          "condition": "applicant.is_disabled == true",
+          "description": "Special allowances for divyangjan (reader, escort, transport, coaching allowances)",
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "hosteller_monthly_inr": 800,
+            "hosteller_annual_twelve_months_inr": 9600,
+            "day_scholar_monthly_inr": 600,
+            "day_scholar_annual_twelve_months_inr": 7200,
+            "covered_conditions": "Divyangjan, leprosy-cured, sickle cell anemia, thalassemia (certified by competent medical authority)"
+          }
+        }
+      ],
+      "required_documents": [
+        "Aadhar Number",
+        "Domicile certificate",
+        "ST certificate issued by competent authority of State",
+        "Family Income Certificate",
+        "Disability certificate (if applicable)",
+        "Scanned copy of the passport size photograph"
+      ],
+      "fund_sharing_ratio": "75:25 (Centre:State); 90:10 for North East states and hilly states; 100% for UTs without legislative assembly",
+      "metadata": {
+        "source_document": "guidelines-pre-matric.pdf",
+        "source_url": "https://tribal.nic.in/downloads/guidelines/pre-matric/guidelines-Pre-matric-17-Oct-2022.pdf",
+        "extraction_confidence": "high",
+        "extraction_notes": "Comprehensive updated scheme guidelines dated 17-Oct-2022. Codifies 75:25 / 90:10 funding pattern, updated disability allowances (Rs. 600/800 pm), DBT mode via Aadhaar, and standardized 6-item document checklist.",
+        "data_verified": false
+      }
+    },
+    "source_document": "guidelines-pre-matric.pdf",
+    "source_url": "https://tribal.nic.in/downloads/guidelines/pre-matric/guidelines-Pre-matric-17-Oct-2022.pdf",
+    "extraction_confidence": "high",
+    "extraction_notes": "Comprehensive updated scheme guidelines dated 17-Oct-2022. Codifies 75:25 / 90:10 funding pattern, updated disability allowances (Rs. 600/800 pm), DBT mode via Aadhaar, and standardized 6-item document checklist."
+  },
+  {
+    "scheme_code": "POST_MATRIC",
+    "version_no": 1,
+    "effective_from": "2010-07-01",
+    "effective_to": "2022-03-31",
+    "config": {
+      "rules": [
+        {
+          "id": "income_ceiling",
+          "type": "eligibility",
+          "expr": "applicant.family_income_annual <= params.income_ceiling",
+          "params": {
+            "income_ceiling": 200000,
+            "notes": "Prescribed as Rs. 2,00,000/- per annum in 2010 regulations; later adjusted to Rs. 2,50,000/- by central notifications during 2013 DBT rollout."
+          },
+          "doc_refs": [
+            "income_certificate"
+          ],
+          "message_key": "err.income_ceiling_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Family Income Ceiling from all sources"
+          }
+        },
+        {
+          "id": "category_match",
+          "type": "eligibility",
+          "expr": "applicant.category in params.allowed_categories",
+          "params": {
+            "allowed_categories": [
+              "ST"
+            ]
+          },
+          "doc_refs": [
+            "caste_certificate"
+          ],
+          "message_key": "err.category_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Target Beneficiary Category (ST / PVTG)"
+          }
+        },
+        {
+          "id": "education_level_match",
+          "type": "eligibility",
+          "expr": "applicant.education_level matches params.eligible_level",
+          "params": {
+            "eligible_level": "Post-Matriculation or Post-Secondary courses in recognized institutions (Classes XI-XII, ITI, Polytechnic, Diploma, Bachelor's, Master's, M.Phil, Ph.D, Professional Degrees)"
+          },
+          "doc_refs": [
+            "marksheet",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.education_level_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Eligible Education Stage & Institution Criteria"
+          }
+        },
+        {
+          "id": "post_matric_course_tenure",
+          "type": "operational",
+          "expr": "applicant.academic_year_number <= applicant.enrolled_course_duration_years",
+          "params": {
+            "tenure_policy": "Full sanctioned duration of course (payable for maximum 10 months per academic year)",
+            "annual_entitlement_months": 10,
+            "source_text": "Duration of the course (maintenance paid for 10 months in an academic year)"
+          },
+          "doc_refs": [
+            "bonafide_certificate",
+            "institution_verification"
+          ],
+          "message_key": "err.course_duration_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Duration of the course as approved by regulatory body"
+          }
+        },
+        {
+          "id": "post_matric_additional_provisions",
+          "type": "benefit_note",
+          "expr": "true",
+          "params": {
+            "compulsory_fees": "Reimbursement of enrolment/registration, tuition, games, union, library, magazine, medical examination fees",
+            "study_tour_charges_max_annual_inr": 1600,
+            "thesis_typing_printing_charges_max_inr": 1600,
+            "correspondence_courses_books_allowance_annual_inr": 1200,
+            "disability_reader_allowance_blind_monthly_inr": 240,
+            "disability_transport_allowance_monthly_inr": 160,
+            "disability_escort_allowance_severely_disabled_monthly_inr": 160,
+            "disability_helper_allowance_hostel_monthly_inr": 160,
+            "disability_coaching_allowance_monthly_inr": 240
+          },
+          "doc_refs": [],
+          "message_key": "info.additional_provisions"
+        }
+      ],
+      "benefits": [
+        {
+          "id": "post_matric_group_I_entitlement",
+          "condition": "applicant.course_group == 'GROUP_I'",
+          "description": "Annual maintenance and fee allowance for group_I",
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "courses": "Degree and Post Graduate courses in professional streams (Medicine, Engineering, Technology, Planning, Architecture, Fashion Technology, Agriculture, Veterinary, allied sciences; Post Graduate Diploma in business management; M.Phil/Ph.D/Post-Doctoral in Medicine/Engg)",
+            "hosteller_monthly_maintenance_inr": 1200,
+            "day_scholar_monthly_maintenance_inr": 550
+          }
+        },
+        {
+          "id": "post_matric_group_II_entitlement",
+          "condition": "applicant.course_group == 'GROUP_II'",
+          "description": "Annual maintenance and fee allowance for group_II",
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "courses": "Professional courses not in Group I (Pharmacy, Nursing, LLB, BFS, other para-medical, Mass Communication, Hotel Management, Interior Decoration, Nutrition) and Post Graduate non-professional courses (M.A., M.Sc., M.Com.)",
+            "hosteller_monthly_maintenance_inr": 820,
+            "day_scholar_monthly_maintenance_inr": 530
+          }
+        },
+        {
+          "id": "post_matric_group_III_entitlement",
+          "condition": "applicant.course_group == 'GROUP_III'",
+          "description": "Annual maintenance and fee allowance for group_III",
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "courses": "Graduate degree recognized courses not covered under Group I & II in Arts, Science and Commerce (B.A., B.Sc., B.Com.)",
+            "hosteller_monthly_maintenance_inr": 570,
+            "day_scholar_monthly_maintenance_inr": 300
+          }
+        },
+        {
+          "id": "post_matric_group_IV_entitlement",
+          "condition": "applicant.course_group == 'GROUP_IV'",
+          "description": "Annual maintenance and fee allowance for group_IV",
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "courses": "All post-matriculation level non-degree courses with Class X entrance qualification (Class XI, XII senior secondary certificate, vocational stream, ITI courses, 3-year polytechnic diploma)",
+            "hosteller_monthly_maintenance_inr": 380,
+            "day_scholar_monthly_maintenance_inr": 230
+          }
+        }
+      ],
+      "required_documents": [
+        "ST caste certificate issued by competent authority",
+        "Parent/Guardian income declaration/certificate",
+        "Marksheet of matriculation or highest examination passed",
+        "Admission proof / fee receipts",
+        "Bank account details (Account number, IFSC code)",
+        "Disability certificate issued by competent medical authority (if applicable)"
+      ],
+      "fund_sharing_ratio": "100% Central Assistance over and above Committed Liability of the States; 100% for UTs without legislature",
+      "metadata": {
+        "source_document": "edu-post-matric-scholarship-pms-for-st-students.pdf",
+        "source_url": "https://tribal.nic.in/downloads/guidelines/post-matric/EDUPostMatricScholarshipPMSforSTstudents230513.pdf",
+        "extraction_confidence": "high",
+        "extraction_notes": "Contains the 2010 Regulations governing the award of Post-Matric Scholarship to ST Students applicable from 01.07.2010, together with Ministry DBT implementation guidelines dated 23rd May 2013.",
+        "data_verified": false
+      }
+    },
+    "source_document": "edu-post-matric-scholarship-pms-for-st-students.pdf",
+    "source_url": "https://tribal.nic.in/downloads/guidelines/post-matric/EDUPostMatricScholarshipPMSforSTstudents230513.pdf",
+    "extraction_confidence": "high",
+    "extraction_notes": "Contains the 2010 Regulations governing the award of Post-Matric Scholarship to ST Students applicable from 01.07.2010, together with Ministry DBT implementation guidelines dated 23rd May 2013."
+  },
+  {
+    "scheme_code": "POST_MATRIC",
+    "version_no": 2,
+    "effective_from": "2022-04-01",
+    "effective_to": null,
+    "config": {
+      "rules": [
+        {
+          "id": "income_ceiling",
+          "type": "eligibility",
+          "expr": "applicant.family_income_annual <= params.income_ceiling",
+          "params": {
+            "income_ceiling": 250000,
+            "notes": "Family income from all sources does not exceed Rs. 2,50,000/- per annum. Income certificate taken once at admission to course, valid for entire duration of course. Orphan supported by guardian exempted from income limit."
+          },
+          "doc_refs": [
+            "income_certificate"
+          ],
+          "message_key": "err.income_ceiling_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Family Income Ceiling from all sources"
+          }
+        },
+        {
+          "id": "category_match",
+          "type": "eligibility",
+          "expr": "applicant.category in params.allowed_categories",
+          "params": {
+            "allowed_categories": [
+              "ST"
+            ]
+          },
+          "doc_refs": [
+            "caste_certificate"
+          ],
+          "message_key": "err.category_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Target Beneficiary Category (ST / PVTG)"
+          }
+        },
+        {
+          "id": "education_level_match",
+          "type": "eligibility",
+          "expr": "applicant.education_level matches params.eligible_level",
+          "params": {
+            "eligible_level": "Higher education starting from Class XI to Post Graduation (Classes XI-XII, ITI, Polytechnic Diploma, Graduate Degree, PG Diploma, Master's, M.Phil, Ph.D in recognized institutions)"
+          },
+          "doc_refs": [
+            "marksheet",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.education_level_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Eligible Education Stage & Institution Criteria"
+          }
+        },
+        {
+          "id": "post_matric_course_tenure",
+          "type": "operational",
+          "expr": "applicant.academic_year_number <= applicant.enrolled_course_duration_years",
+          "params": {
+            "tenure_policy": "Full sanctioned duration of course (payable for maximum 10 months per academic year)",
+            "annual_entitlement_months": 10,
+            "source_text": "Payable for the entire course for which application is made (stipend paid for 10 months per academic year)"
+          },
+          "doc_refs": [
+            "bonafide_certificate",
+            "institution_verification"
+          ],
+          "message_key": "err.course_duration_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Duration of the course as approved by regulatory body"
+          }
+        }
+      ],
+      "benefits": [
+        {
+          "id": "tuition_fee_reimbursement",
+          "condition": "true",
+          "description": "Compulsory non-refundable fees payment",
+          "disbursement_channel": "INSTITUTE_PFMS",
+          "components": {
+            "government_institutions": "As decided by State Level Fee Fixation Committee of the state",
+            "private_sector_institutions_central_ceilings": {
+              "engineering_courses_max_annual_inr": 250000,
+              "mbbs_ms_md_courses_max_annual_inr": 600000,
+              "other_courses_max_annual_inr": 100000
+            },
+            "top_up_policy": "Concerned State Government/UT Administration is free to provide scholarship over and above these limits from their own funds."
+          }
+        },
+        {
+          "id": "maintenance_stipend_component",
+          "condition": "true",
+          "description": "Monthly maintenance stipend for course duration",
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "group_I": {
+              "courses": "Bachelor, Master Degree, MPhil/PhD degree, PG Diploma in professional courses in various streams",
+              "hosteller_monthly_inr": 1200,
+              "hosteller_annual_inr": 12000,
+              "day_scholar_monthly_inr": 550,
+              "day_scholar_annual_inr": 5500
+            },
+            "group_II": {
+              "courses": "All non-professional recognized courses leading to Bachelor, Master Degree, MPhil/PhD degree not covered under Group I in Arts, Science and Commerce (BA/B.Sc/B.Com or MA/M.Sc/M.Com)",
+              "hosteller_monthly_inr": 820,
+              "hosteller_annual_inr": 8200,
+              "day_scholar_monthly_inr": 530,
+              "day_scholar_annual_inr": 5300
+            },
+            "group_III": {
+              "courses": "Vocational stream, ITI courses, 3-year diploma courses in Polytechnics, etc.",
+              "hosteller_monthly_inr": 570,
+              "hosteller_annual_inr": 5700,
+              "day_scholar_monthly_inr": 300,
+              "day_scholar_annual_inr": 3000
+            },
+            "group_IV": {
+              "courses": "All post-matriculation level non-degree courses with Class X entrance qualification (Classes XI and XII senior secondary)",
+              "hosteller_monthly_inr": 380,
+              "hosteller_annual_inr": 3800,
+              "day_scholar_monthly_inr": 230,
+              "day_scholar_annual_inr": 2300
+            }
+          }
+        },
+        {
+          "id": "disability_allowance_post_matric",
+          "condition": "applicant.is_disabled == true",
+          "description": "Additional disability support allowances",
+          "currency": "INR",
+          "components": {
+            "monthly_inr": 800,
+            "annual_inr": 9600
+          }
+        }
+      ],
+      "required_documents": [
+        "Aadhar Number",
+        "Domicile certificate",
+        "Scanned copy of certificates, diploma, degree etc. in respect of all examinations passed",
+        "Last qualified marks [percentage/Equivalent percentage in case of CGPA/OGPA etc.]",
+        "ST certificate issued by competent authority of State/UT",
+        "Family Income Certificate",
+        "Disability certificate (if applicable)",
+        "Scanned copy of the passport size photograph"
+      ],
+      "fund_sharing_ratio": "75:25 (Centre:State); 90:10 for North East states and hilly states; 100% for UTs without legislative assembly",
+      "metadata": {
+        "source_document": "guidelines-of-scheme-post-matric-scholarship.pdf",
+        "source_url": "https://tribal.nic.in/downloads/guidelines/post-matric/Post-matric-guidelines-15032023.pdf",
+        "extraction_confidence": "high",
+        "extraction_notes": "Official comprehensive regulation governing Post-Matric Scholarship applicable from 01-04-2022 (issued March 2023). Introduces central caps on private fee support (Rs. 2.5L / 6.0L / 1.0L), 75:25 / 90:10 sharing ratio, and excludes 252 notified Top Class institutes.",
+        "data_verified": false
+      }
+    },
+    "source_document": "guidelines-of-scheme-post-matric-scholarship.pdf",
+    "source_url": "https://tribal.nic.in/downloads/guidelines/post-matric/Post-matric-guidelines-15032023.pdf",
+    "extraction_confidence": "high",
+    "extraction_notes": "Official comprehensive regulation governing Post-Matric Scholarship applicable from 01-04-2022 (issued March 2023). Introduces central caps on private fee support (Rs. 2.5L / 6.0L / 1.0L), 75:25 / 90:10 sharing ratio, and excludes 252 notified Top Class institutes."
+  },
+  {
+    "scheme_code": "TOP_CLASS",
+    "version_no": 1,
+    "effective_from": "2017-11-23",
+    "effective_to": "2022-03-31",
+    "config": {
+      "rules": [
+        {
+          "id": "income_ceiling",
+          "type": "eligibility",
+          "expr": "applicant.family_income_annual <= params.income_ceiling",
+          "params": {
+            "income_ceiling": 600000,
+            "notes": "Total family income of the student from all sources should not exceed Rs. 6.0 lakh per annum."
+          },
+          "doc_refs": [
+            "income_certificate"
+          ],
+          "message_key": "err.income_ceiling_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Family Income Ceiling from all sources"
+          }
+        },
+        {
+          "id": "category_match",
+          "type": "eligibility",
+          "expr": "applicant.category in params.allowed_categories",
+          "params": {
+            "allowed_categories": [
+              "ST"
+            ]
+          },
+          "doc_refs": [
+            "caste_certificate"
+          ],
+          "message_key": "err.category_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Target Beneficiary Category (ST / PVTG)"
+          }
+        },
+        {
+          "id": "education_level_match",
+          "type": "eligibility",
+          "expr": "applicant.education_level matches params.eligible_level",
+          "params": {
+            "eligible_level": "Graduate and Post Graduate courses in identified premier institutes (Engineering, Management, Medicine, Law, Commercial Pilot Training)"
+          },
+          "doc_refs": [
+            "marksheet",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.education_level_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Eligible Education Stage & Institution Criteria"
+          }
+        },
+        {
+          "id": "top_class_course_tenure",
+          "type": "operational",
+          "expr": "applicant.academic_year_number <= applicant.notified_course_duration_years",
+          "params": {
+            "tenure_policy": "Full tenure of the graduate/postgraduate degree as notified by the premier institution",
+            "source_text": "Full tenure of the course as fixed by the institute"
+          },
+          "doc_refs": [
+            "bonafide_certificate",
+            "admission_offer_letter"
+          ],
+          "message_key": "err.top_class_tenure_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Full tenure of degree program in notified institution"
+          }
+        }
+      ],
+      "benefits": [
+        {
+          "id": "top_class_tuition_fees",
+          "condition": "true",
+          "description": "Full tuition fees and non-refundable charges in notified premier institute",
+          "disbursement_channel": "INSTITUTE_PFMS",
+          "components": {
+            "government_institutes": "Full admission fee, tuition fee and non-refundable fees as per actuals",
+            "private_sector_institutes_max_annual_inr": 200000
+          }
+        },
+        {
+          "id": "living_expenses_stipend",
+          "condition": "true",
+          "description": "Monthly living expenses stipend",
+          "amount_monthly": 2220,
+          "amount_annual": 26640,
+          "currency": "INR",
+          "duration_months": 12,
+          "disbursement_channel": "STUDENT_DBT"
+        },
+        {
+          "id": "books_and_stationery_grant",
+          "condition": "true",
+          "description": "Annual books and stationery grant",
+          "amount_annual": 3000,
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT"
+        },
+        {
+          "id": "computer_hardware_grant",
+          "condition": "applicant.course_year == 1",
+          "description": "One-time grant for computer, printer, and digital accessories",
+          "amount_annual": 45000,
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT"
+        }
+      ],
+      "required_documents": [
+        "ST Certificate",
+        "Income Certificate / Form-16 for preceding FY",
+        "Admission offer letter / fee receipt from notified institute",
+        "Bank passbook copy (Aadhaar linked)",
+        "Marksheet of qualifying examination (Class 12 for UG, Graduation for PG)",
+        "Bonafide certificate from Institute"
+      ],
+      "fund_sharing_ratio": "100% Central Sector Scheme",
+      "metadata": {
+        "source_document": "amendment-to-para-3-1-of-the-scheme-national-fellowship-and-scholarship-for-higher-ed.pdf",
+        "source_url": "https://tribal.nic.in/downloads/guidelines/Top-Class/Amendmenttopara12112018.pdf",
+        "extraction_confidence": "high",
+        "extraction_notes": "Reflects the 2017-18 merged framework (SFC approved for 2017-18 to 2019-20, amended 27.08.2018 and 12.11.2018) with 1,000 slots, Rs. 2,220/mo living expenses, and Rs. 3,000/yr books allowance.",
+        "data_verified": false
+      }
+    },
+    "source_document": "amendment-to-para-3-1-of-the-scheme-national-fellowship-and-scholarship-for-higher-ed.pdf",
+    "source_url": "https://tribal.nic.in/downloads/guidelines/Top-Class/Amendmenttopara12112018.pdf",
+    "extraction_confidence": "high",
+    "extraction_notes": "Reflects the 2017-18 merged framework (SFC approved for 2017-18 to 2019-20, amended 27.08.2018 and 12.11.2018) with 1,000 slots, Rs. 2,220/mo living expenses, and Rs. 3,000/yr books allowance."
+  },
+  {
+    "scheme_code": "TOP_CLASS",
+    "version_no": 2,
+    "effective_from": "2022-04-01",
+    "effective_to": "2023-07-06",
+    "config": {
+      "rules": [
+        {
+          "id": "income_ceiling",
+          "type": "eligibility",
+          "expr": "applicant.family_income_annual <= params.income_ceiling",
+          "params": {
+            "income_ceiling": 600000,
+            "notes": "Total family income from all sources should not exceed Rs. 6.0 lakh per annum. Income certificate for financial year immediately preceding selection year (Form-16 accepted for salaried). Orphan supported by guardian exempted. Spousal income added if married."
+          },
+          "doc_refs": [
+            "income_certificate"
+          ],
+          "message_key": "err.income_ceiling_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Family Income Ceiling from all sources"
+          }
+        },
+        {
+          "id": "category_match",
+          "type": "eligibility",
+          "expr": "applicant.category in params.allowed_categories",
+          "params": {
+            "allowed_categories": [
+              "ST",
+              "PVTG"
+            ]
+          },
+          "doc_refs": [
+            "caste_certificate"
+          ],
+          "message_key": "err.category_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Target Beneficiary Category (ST / PVTG)"
+          }
+        },
+        {
+          "id": "education_level_match",
+          "type": "eligibility",
+          "expr": "applicant.education_level matches params.eligible_level",
+          "params": {
+            "eligible_level": "Graduate and Post Graduate level courses in 252 notified premier institutes (IITs, IIMs, NITs, AIIMS, NLUs, etc.)"
+          },
+          "doc_refs": [
+            "marksheet",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.education_level_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Eligible Education Stage & Institution Criteria"
+          }
+        },
+        {
+          "id": "top_class_course_tenure",
+          "type": "operational",
+          "expr": "applicant.academic_year_number <= applicant.notified_course_duration_years",
+          "params": {
+            "tenure_policy": "Full tenure of the graduate/postgraduate degree as notified by the premier institution",
+            "source_text": "Full tenure of the course as fixed by the institute"
+          },
+          "doc_refs": [
+            "bonafide_certificate",
+            "admission_offer_letter"
+          ],
+          "message_key": "err.top_class_tenure_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Full tenure of degree program in notified institution"
+          }
+        },
+        {
+          "id": "disbursement_breakdown_guideline",
+          "type": "benefit_note",
+          "expr": "true",
+          "params": {
+            "component_I": "Stipend, books/stationery, computer allowance, and non-refundable fees released to student via PFMS-DBT",
+            "component_II": "Tuition and admission fee released to Institute through PFMS"
+          },
+          "doc_refs": [],
+          "message_key": "info.disbursement_schedule"
+        }
+      ],
+      "benefits": [
+        {
+          "id": "top_class_tuition_fees",
+          "condition": "true",
+          "description": "Full tuition fees and non-refundable charges in notified premier institute",
+          "disbursement_channel": "INSTITUTE_PFMS",
+          "components": {
+            "government_institutes": "Full admission fee, tuition fee and other non-refundable charges as per actuals",
+            "private_sector_institutes_max_annual_inr": 250000
+          }
+        },
+        {
+          "id": "living_expenses_stipend",
+          "condition": "true",
+          "description": "Monthly living expenses stipend",
+          "amount_monthly": 3000,
+          "amount_annual": 36000,
+          "currency": "INR",
+          "duration_months": 12,
+          "disbursement_channel": "STUDENT_DBT"
+        },
+        {
+          "id": "books_and_stationery_grant",
+          "condition": "true",
+          "description": "Annual books and stationery grant",
+          "amount_annual": 5000,
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT"
+        },
+        {
+          "id": "computer_hardware_grant",
+          "condition": "applicant.course_year == 1",
+          "description": "One-time grant for computer, printer, and digital accessories",
+          "amount_annual": 45000,
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT"
+        }
+      ],
+      "required_documents": [
+        "ST Certificate / PVTG Certificate (signed & stamped by competent authority)",
+        "Income Certificate for preceding FY (or Form-16 for salaried)",
+        "Fee Receipt",
+        "Scanned copy of the bank passbook (Aadhaar linked)",
+        "Marksheet/Certificate of qualifying examination (12th for UG, Graduation for PG)",
+        "Bona fide Certificate issued from the Institute",
+        "Aadhaar Number / Card"
+      ],
+      "fund_sharing_ratio": "100% Central Sector Scheme",
+      "metadata": {
+        "source_document": "guidelines-of-scheme-national-fellowship-and-scholarship-for-higher-education-of-st-s.pdf",
+        "source_url": "https://tribal.nic.in/downloads/guidelines/Top-Class/GuidelinesFellowshipandScholarship2022.pdf",
+        "extraction_confidence": "high",
+        "extraction_notes": "Part B of combined guidelines for 2021-22 to 2025-26 with rates effective from 1st April 2022. Revises living expenses stipend to Rs. 3,000/mo, books/stationery to Rs. 5,000/yr, private fee cap to Rs. 2,50,000/yr, and removes slot cap for eligible admitted students.",
+        "data_verified": false
+      }
+    },
+    "source_document": "guidelines-of-scheme-national-fellowship-and-scholarship-for-higher-education-of-st-s.pdf",
+    "source_url": "https://tribal.nic.in/downloads/guidelines/Top-Class/GuidelinesFellowshipandScholarship2022.pdf",
+    "extraction_confidence": "high",
+    "extraction_notes": "Part B of combined guidelines for 2021-22 to 2025-26 with rates effective from 1st April 2022. Revises living expenses stipend to Rs. 3,000/mo, books/stationery to Rs. 5,000/yr, private fee cap to Rs. 2,50,000/yr, and removes slot cap for eligible admitted students."
+  },
+  {
+    "scheme_code": "TOP_CLASS",
+    "version_no": 3,
+    "effective_from": "2023-07-07",
+    "effective_to": null,
+    "config": {
+      "rules": [
+        {
+          "id": "income_ceiling",
+          "type": "eligibility",
+          "expr": "applicant.family_income_annual <= params.income_ceiling",
+          "params": {
+            "income_ceiling": 600000,
+            "notes": "Total family income from all sources should not exceed Rs. 6.0 lakh per annum. Income certificate for preceding FY (Form-16 for salaried). Orphan supported by guardian exempted."
+          },
+          "doc_refs": [
+            "income_certificate"
+          ],
+          "message_key": "err.income_ceiling_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Family Income Ceiling from all sources"
+          }
+        },
+        {
+          "id": "category_match",
+          "type": "eligibility",
+          "expr": "applicant.category in params.allowed_categories",
+          "params": {
+            "allowed_categories": [
+              "ST",
+              "PVTG"
+            ]
+          },
+          "doc_refs": [
+            "caste_certificate"
+          ],
+          "message_key": "err.category_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Target Beneficiary Category (ST / PVTG)"
+          }
+        },
+        {
+          "id": "education_level_match",
+          "type": "eligibility",
+          "expr": "applicant.education_level matches params.eligible_level",
+          "params": {
+            "eligible_level": "Graduate and Post Graduate level courses in 265 notified premier institutes"
+          },
+          "doc_refs": [
+            "marksheet",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.education_level_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Eligible Education Stage & Institution Criteria"
+          }
+        },
+        {
+          "id": "top_class_course_tenure",
+          "type": "operational",
+          "expr": "applicant.academic_year_number <= applicant.notified_course_duration_years",
+          "params": {
+            "tenure_policy": "Full tenure of the graduate/postgraduate degree as notified by the premier institution",
+            "source_text": "Full tenure of the course as fixed by the institute"
+          },
+          "doc_refs": [
+            "bonafide_certificate",
+            "admission_offer_letter"
+          ],
+          "message_key": "err.top_class_tenure_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Full tenure of degree program in notified institution"
+          }
+        },
+        {
+          "id": "disbursement_breakdown_guideline",
+          "type": "benefit_note",
+          "expr": "true",
+          "params": {
+            "component_I": "Stipend, books/stationery, and computer allowance released to student via PFMS-DBT",
+            "component_II": "Tuition fee, admission fee, and non-refundable fees released directly to the Institute through PFMS (reimbursed by University to student if paid upfront at admission)"
+          },
+          "doc_refs": [],
+          "message_key": "info.disbursement_schedule"
+        }
+      ],
+      "benefits": [
+        {
+          "id": "top_class_tuition_fees",
+          "condition": "true",
+          "description": "Full tuition fees and non-refundable charges in notified premier institute",
+          "disbursement_channel": "INSTITUTE_PFMS",
+          "components": {
+            "government_institutes": "Full admission fee, tuition fee and other non-refundable charges as per actuals",
+            "private_sector_institutes_max_annual_inr": 250000
+          }
+        },
+        {
+          "id": "living_expenses_stipend",
+          "condition": "true",
+          "description": "Monthly living expenses stipend",
+          "amount_monthly": 3000,
+          "amount_annual": 36000,
+          "currency": "INR",
+          "duration_months": 12,
+          "disbursement_channel": "STUDENT_DBT"
+        },
+        {
+          "id": "books_and_stationery_grant",
+          "condition": "true",
+          "description": "Annual books and stationery grant",
+          "amount_annual": 5000,
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT"
+        },
+        {
+          "id": "computer_hardware_grant",
+          "condition": "applicant.course_year == 1",
+          "description": "One-time grant for computer, printer, and digital accessories",
+          "amount_annual": 45000,
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT"
+        }
+      ],
+      "required_documents": [
+        "ST Certificate / PVTG Certificate",
+        "Income Certificate for preceding FY (or Form-16 for salaried)",
+        "Fee Receipt",
+        "Scanned copy of the bank passbook",
+        "Marksheet/Certificate of qualifying examination (12th for UG, Graduation for PG)",
+        "Bona fide Certificate issued from the Institute",
+        "Aadhaar Number / Card"
+      ],
+      "fund_sharing_ratio": "100% Central Sector Scheme",
+      "metadata": {
+        "source_document": "amendment-to-para-4-1-part-b-scholarship-of-the-scheme-national-fellowship-and-schola.pdf",
+        "source_url": "https://tribal.nic.in/downloads/guidelines/NFS/AmendmentGuidelinesNFS4highereducaton4STstudents_7July2023.pdf",
+        "extraction_confidence": "high",
+        "extraction_notes": "Official amendment F.No. 11019/02/2020-Sch dated 07.07.2023: This document revises Para 4.1 disbursement rules from 2023-24 by shifting non-refundable fee from Component I (direct to student) to Component II (direct to Institute via PFMS).",
+        "data_verified": false
+      }
+    },
+    "source_document": "amendment-to-para-4-1-part-b-scholarship-of-the-scheme-national-fellowship-and-schola.pdf",
+    "source_url": "https://tribal.nic.in/downloads/guidelines/NFS/AmendmentGuidelinesNFS4highereducaton4STstudents_7July2023.pdf",
+    "extraction_confidence": "high",
+    "extraction_notes": "Official amendment F.No. 11019/02/2020-Sch dated 07.07.2023: This document revises Para 4.1 disbursement rules from 2023-24 by shifting non-refundable fee from Component I (direct to student) to Component II (direct to Institute via PFMS)."
+  },
+  {
+    "scheme_code": "NFST",
+    "version_no": 1,
+    "effective_from": "2017-11-23",
+    "effective_to": "2021-06-30",
+    "config": {
+      "rules": [
+        {
+          "id": "income_criteria_exemption",
+          "type": "benefit_note",
+          "expr": "true",
+          "params": {
+            "income_ceiling": null,
+            "notes": "No income ceiling / means test applies to the National Fellowship Scheme."
+          },
+          "doc_refs": [],
+          "message_key": "info.no_income_ceiling",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: No parental income ceiling applicable"
+          }
+        },
+        {
+          "id": "category_match",
+          "type": "eligibility",
+          "expr": "applicant.category in params.allowed_categories",
+          "params": {
+            "allowed_categories": [
+              "ST",
+              "PVTG"
+            ]
+          },
+          "doc_refs": [
+            "caste_certificate"
+          ],
+          "message_key": "err.category_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Target Beneficiary Category (ST / PVTG)"
+          }
+        },
+        {
+          "id": "education_level_match",
+          "type": "eligibility",
+          "expr": "applicant.education_level matches params.eligible_level",
+          "params": {
+            "eligible_level": "M.Phil, Ph.D (regular and full-time in recognized universities/institutions)"
+          },
+          "doc_refs": [
+            "marksheet",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.education_level_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Eligible Education Stage & Institution Criteria"
+          }
+        },
+        {
+          "id": "fellowship_tenure_limit",
+          "type": "eligibility",
+          "expr": "applicant.degree_enrolled == 'M.Phil' ? applicant.tenure_years <= params.mphil_max_years : applicant.tenure_years <= params.phd_max_years",
+          "params": {
+            "mphil_max_years": 2,
+            "phd_max_years": 5,
+            "integrated_mphil_phd_max_years": 5,
+            "discontinuation_clause": "Terminates upon dissertation submission or completion of prescribed tenure, whichever is earlier",
+            "source_text": "M.Phil: 2 years; Ph.D: 5 years; Integrated M.Phil+Ph.D: 5 years"
+          },
+          "doc_refs": [
+            "research_progress_report",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.fellowship_tenure_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: M.Phil (2 yrs) / Ph.D (5 yrs) maximum fellowship duration"
+          }
+        }
+      ],
+      "benefits": [
+        {
+          "id": "jrf_monthly_stipend",
+          "condition": "applicant.fellowship_tier == 'JRF'",
+          "description": "Junior Research Fellow (JRF) monthly stipend",
+          "amount_monthly": null,
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT"
+        },
+        {
+          "id": "srf_monthly_stipend",
+          "condition": "applicant.fellowship_tier == 'SRF'",
+          "description": "Senior Research Fellow (SRF) monthly stipend",
+          "amount_monthly": null,
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT"
+        },
+        {
+          "id": "research_contingency_grant",
+          "condition": "true",
+          "description": "Annual research contingency grant by discipline",
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "humanities_social_sciences_inr": 10000,
+            "science_engineering_technology_inr": 12000
+          }
+        },
+        {
+          "id": "house_rent_allowance_hra",
+          "condition": "applicant.hosteller == false",
+          "description": "House Rent Allowance as per city classification (X/Y/Z)",
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "rate_guidelines": "As per UGC rates (8%, 16%, or 24% based on city category)"
+          }
+        },
+        {
+          "id": "divyangjan_escorts_reader_allowance",
+          "condition": "applicant.is_disabled == true",
+          "description": "Reader and escort allowance for physically handicapped research scholars",
+          "amount_monthly": 2000,
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT"
+        }
+      ],
+      "required_documents": [
+        "ST / PVTG Certificate",
+        "Post-Graduation marksheet (minimum 55% marks)",
+        "Date of birth proof (Class 10 certificate)",
+        "Admission / Joining report from University",
+        "Divyangjan certificate (if claiming disability slot)"
+      ],
+      "fund_sharing_ratio": "100% Central Sector Scheme",
+      "metadata": {
+        "source_document": "nfst-hike-related-letter-11082020.pdf",
+        "source_url": "https://tribal.nic.in/downloads/circulars/NFSThikerelatedletter.pdf",
+        "extraction_confidence": "high",
+        "extraction_notes": "Established under the 23rd November 2017 SFC approved guidelines for 2017-18 to 2019-20, maintaining JRF rates at Rs. 25,000/mo and SRF at Rs. 28,000/mo as documented in Notice dated 11-08-2020.",
+        "data_verified": false
+      }
+    },
+    "source_document": "nfst-hike-related-letter-11082020.pdf",
+    "source_url": "https://tribal.nic.in/downloads/circulars/NFSThikerelatedletter.pdf",
+    "extraction_confidence": "high",
+    "extraction_notes": "Established under the 23rd November 2017 SFC approved guidelines for 2017-18 to 2019-20, maintaining JRF rates at Rs. 25,000/mo and SRF at Rs. 28,000/mo as documented in Notice dated 11-08-2020."
+  },
+  {
+    "scheme_code": "NFST",
+    "version_no": 2,
+    "effective_from": "2021-07-01",
+    "effective_to": "2022-12-31",
+    "config": {
+      "rules": [
+        {
+          "id": "income_criteria_exemption",
+          "type": "benefit_note",
+          "expr": "true",
+          "params": {
+            "income_ceiling": null,
+            "notes": "There is no income criteria for eligibility in respect of this fellowship."
+          },
+          "doc_refs": [],
+          "message_key": "info.no_income_ceiling",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: No parental income ceiling applicable"
+          }
+        },
+        {
+          "id": "category_match",
+          "type": "eligibility",
+          "expr": "applicant.category in params.allowed_categories",
+          "params": {
+            "allowed_categories": [
+              "ST",
+              "PVTG"
+            ]
+          },
+          "doc_refs": [
+            "caste_certificate"
+          ],
+          "message_key": "err.category_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Target Beneficiary Category (ST / PVTG)"
+          }
+        },
+        {
+          "id": "education_level_match",
+          "type": "eligibility",
+          "expr": "applicant.education_level matches params.eligible_level",
+          "params": {
+            "eligible_level": "Regular and full time M.Phil, Ph.D, or Integrated M.Phil+Ph.D in universities/institutes under 2(f)/12(B) of UGC Act or Institutes of National Importance"
+          },
+          "doc_refs": [
+            "marksheet",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.education_level_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Eligible Education Stage & Institution Criteria"
+          }
+        },
+        {
+          "id": "fellowship_tenure_limit",
+          "type": "eligibility",
+          "expr": "applicant.degree_enrolled == 'M.Phil' ? applicant.tenure_years <= params.mphil_max_years : applicant.tenure_years <= params.phd_max_years",
+          "params": {
+            "mphil_max_years": 2,
+            "phd_max_years": 5,
+            "integrated_mphil_phd_max_years": 5,
+            "discontinuation_clause": "Terminates upon dissertation submission or completion of prescribed tenure, whichever is earlier",
+            "source_text": "M.Phil: 2 years; Ph.D: 5 years; M.Phil + Ph.D: 5 years (or date of dissertation submission, whichever is earlier)"
+          },
+          "doc_refs": [
+            "research_progress_report",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.fellowship_tenure_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: M.Phil (2 yrs) / Ph.D (5 yrs) maximum fellowship duration"
+          }
+        },
+        {
+          "id": "nfst_slots_quota",
+          "type": "operational",
+          "expr": "true",
+          "params": {
+            "divyangjan_reserved_slots": 38,
+            "pvtg_reserved_slots": 25,
+            "female_reserved_slots": 225,
+            "st_others_slots": 462,
+            "priority_institutes": "Eligible candidates with admission offers from IITs/AIIMS/IIMs/IISERs given direct priority"
+          },
+          "doc_refs": [],
+          "message_key": "info.slots_quota"
+        }
+      ],
+      "benefits": [
+        {
+          "id": "jrf_monthly_stipend",
+          "condition": "applicant.fellowship_tier == 'JRF'",
+          "description": "Junior Research Fellow (JRF) monthly stipend",
+          "amount_monthly": null,
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT"
+        },
+        {
+          "id": "srf_monthly_stipend",
+          "condition": "applicant.fellowship_tier == 'SRF'",
+          "description": "Senior Research Fellow (SRF) monthly stipend",
+          "amount_monthly": null,
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT"
+        },
+        {
+          "id": "research_contingency_grant",
+          "condition": "true",
+          "description": "Annual research contingency grant by discipline",
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "m_phil_humanities_social_sciences_inr": 10000,
+            "m_phil_science_engineering_technology_inr": 12000,
+            "phd_humanities_social_sciences_inr": 20500,
+            "phd_science_engineering_technology_inr": 25000
+          }
+        },
+        {
+          "id": "house_rent_allowance_hra",
+          "condition": "applicant.hosteller == false",
+          "description": "House Rent Allowance as per city classification (X/Y/Z)",
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "rate_guidelines": "Equal to UGC rates (8%, 16%, or 24% based on city category X, Y, Z); not admissible if hostel accommodation provided"
+          }
+        },
+        {
+          "id": "divyangjan_escorts_reader_allowance",
+          "condition": "applicant.is_disabled == true",
+          "description": "Reader and escort allowance for physically handicapped research scholars",
+          "amount_monthly": 2000,
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT"
+        }
+      ],
+      "required_documents": [
+        "Latest coloured passport size photograph",
+        "ST/PVTG certificate issued by competent authority",
+        "10th / Matriculation / equivalent certificate in support of date of birth",
+        "Divyangjan certificate issued by competent authority (certifying minimum 40% disability, if applicable)",
+        "Post-Graduation mark sheet (minimum 55% marks or equivalent CGPA)",
+        "Admission/Joining certificate of M.Phil/Ph.D from concerned University",
+        "Offer of admission in respect of students admitted to IITs/AIIMS/IIMs/IISERs (if applicable)"
+      ],
+      "fund_sharing_ratio": "100% Central Sector Scheme",
+      "metadata": {
+        "source_document": "guidelines-of-scheme-national-fellowship-and-scholarship-for-higher-education-of-st-s.pdf",
+        "source_url": "https://tribal.nic.in/downloads/guidelines/NFS/GuidelinesFellowshipandScholarship2022.pdf",
+        "extraction_confidence": "high",
+        "extraction_notes": "Part A of the combined National Fellowship & Scholarship guidelines for 2021-22 to 2025-26. Revises JRF rate to Rs. 31,000/mo and SRF to Rs. 35,000/mo with updated contingency.",
+        "data_verified": false
+      }
+    },
+    "source_document": "guidelines-of-scheme-national-fellowship-and-scholarship-for-higher-education-of-st-s.pdf",
+    "source_url": "https://tribal.nic.in/downloads/guidelines/NFS/GuidelinesFellowshipandScholarship2022.pdf",
+    "extraction_confidence": "high",
+    "extraction_notes": "Part A of the combined National Fellowship & Scholarship guidelines for 2021-22 to 2025-26. Revises JRF rate to Rs. 31,000/mo and SRF to Rs. 35,000/mo with updated contingency."
+  },
+  {
+    "scheme_code": "NFST",
+    "version_no": 3,
+    "effective_from": "2023-01-01",
+    "effective_to": "2025-06-30",
+    "config": {
+      "rules": [
+        {
+          "id": "income_criteria_exemption",
+          "type": "benefit_note",
+          "expr": "true",
+          "params": {
+            "income_ceiling": null,
+            "notes": "There is no income criteria for eligibility in respect of this fellowship."
+          },
+          "doc_refs": [],
+          "message_key": "info.no_income_ceiling",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: No parental income ceiling applicable"
+          }
+        },
+        {
+          "id": "category_match",
+          "type": "eligibility",
+          "expr": "applicant.category in params.allowed_categories",
+          "params": {
+            "allowed_categories": [
+              "ST",
+              "PVTG"
+            ]
+          },
+          "doc_refs": [
+            "caste_certificate"
+          ],
+          "message_key": "err.category_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Target Beneficiary Category (ST / PVTG)"
+          }
+        },
+        {
+          "id": "education_level_match",
+          "type": "eligibility",
+          "expr": "applicant.education_level matches params.eligible_level",
+          "params": {
+            "eligible_level": "Regular and full time M.Phil, Ph.D, or Integrated M.Phil+Ph.D"
+          },
+          "doc_refs": [
+            "marksheet",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.education_level_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Eligible Education Stage & Institution Criteria"
+          }
+        },
+        {
+          "id": "fellowship_tenure_limit",
+          "type": "eligibility",
+          "expr": "applicant.degree_enrolled == 'M.Phil' ? applicant.tenure_years <= params.mphil_max_years : applicant.tenure_years <= params.phd_max_years",
+          "params": {
+            "mphil_max_years": 2,
+            "phd_max_years": 5,
+            "integrated_mphil_phd_max_years": 5,
+            "discontinuation_clause": "Terminates upon dissertation submission or completion of prescribed tenure, whichever is earlier",
+            "source_text": "M.Phil: 2 years; Ph.D: 5 years; M.Phil + Ph.D: 5 years"
+          },
+          "doc_refs": [
+            "research_progress_report",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.fellowship_tenure_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: M.Phil (2 yrs) / Ph.D (5 yrs) maximum fellowship duration"
+          }
+        }
+      ],
+      "benefits": [
+        {
+          "id": "jrf_monthly_stipend",
+          "condition": "applicant.fellowship_tier == 'JRF'",
+          "description": "Junior Research Fellow (JRF) monthly stipend",
+          "amount_monthly": null,
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT"
+        },
+        {
+          "id": "srf_monthly_stipend",
+          "condition": "applicant.fellowship_tier == 'SRF'",
+          "description": "Senior Research Fellow (SRF) monthly stipend",
+          "amount_monthly": null,
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT"
+        },
+        {
+          "id": "research_contingency_grant",
+          "condition": "true",
+          "description": "Annual research contingency grant by discipline",
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "m_phil_humanities_social_sciences_inr": 10000,
+            "m_phil_science_engineering_technology_inr": 12000,
+            "phd_humanities_social_sciences_inr": 20500,
+            "phd_science_engineering_technology_inr": 25000
+          }
+        },
+        {
+          "id": "house_rent_allowance_hra",
+          "condition": "applicant.hosteller == false",
+          "description": "House Rent Allowance as per city classification (X/Y/Z)",
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "rate_guidelines": "Equal to UGC rates (8%, 16%, or 24% based on city categorization)"
+          }
+        },
+        {
+          "id": "divyangjan_escorts_reader_allowance",
+          "condition": "applicant.is_disabled == true",
+          "description": "Reader and escort allowance for physically handicapped research scholars",
+          "amount_monthly": 2000,
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT"
+        }
+      ],
+      "required_documents": [
+        "Latest coloured passport size photograph",
+        "ST/PVTG certificate issued by competent authority",
+        "10th / Matriculation / equivalent certificate in support of date of birth",
+        "Divyangjan certificate (if applicable)",
+        "Post-Graduation mark sheet (minimum 55% marks)",
+        "Admission/Joining certificate of M.Phil/Ph.D from concerned University",
+        "Offer letter for IITs/AIIMS/IIMs/IISERs (if applicable)"
+      ],
+      "fund_sharing_ratio": "100% Central Sector Scheme",
+      "metadata": {
+        "source_document": "revised-rate-of-fellowship-w-e-f-1-1-2023.pdf",
+        "source_url": "https://tribal.nic.in/downloads/circulars/Revised rate of fellowship w.e.f 1.1.2023.pdf",
+        "extraction_confidence": "high",
+        "extraction_notes": "Official Notice No. 11019/02/2020-Sch dated 4th December 2023: This document revises NFST fellowship stipend from Rs. 31,000 to Rs. 37,000 p.m. for M.Phil and JRF (first 2 years), and from Rs. 35,000 to Rs. 42,000 p.m. for SRF (balance 3 years), effective 01/01/2023.",
+        "data_verified": false
+      }
+    },
+    "source_document": "revised-rate-of-fellowship-w-e-f-1-1-2023.pdf",
+    "source_url": "https://tribal.nic.in/downloads/circulars/Revised rate of fellowship w.e.f 1.1.2023.pdf",
+    "extraction_confidence": "high",
+    "extraction_notes": "Official Notice No. 11019/02/2020-Sch dated 4th December 2023: This document revises NFST fellowship stipend from Rs. 31,000 to Rs. 37,000 p.m. for M.Phil and JRF (first 2 years), and from Rs. 35,000 to Rs. 42,000 p.m. for SRF (balance 3 years), effective 01/01/2023."
+  },
+  {
+    "scheme_code": "NFST",
+    "version_no": 4,
+    "effective_from": "2025-07-01",
+    "effective_to": null,
+    "config": {
+      "rules": [
+        {
+          "id": "income_criteria_exemption",
+          "type": "benefit_note",
+          "expr": "true",
+          "params": {
+            "income_ceiling": null,
+            "notes": "No income criteria."
+          },
+          "doc_refs": [],
+          "message_key": "info.no_income_ceiling",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: No parental income ceiling applicable"
+          }
+        },
+        {
+          "id": "category_match",
+          "type": "eligibility",
+          "expr": "applicant.category in params.allowed_categories",
+          "params": {
+            "allowed_categories": [
+              "ST",
+              "PVTG"
+            ]
+          },
+          "doc_refs": [
+            "caste_certificate"
+          ],
+          "message_key": "err.category_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Target Beneficiary Category (ST / PVTG)"
+          }
+        },
+        {
+          "id": "education_level_match",
+          "type": "eligibility",
+          "expr": "applicant.education_level matches params.eligible_level",
+          "params": {
+            "eligible_level": "Ph.D in Science, Humanities, and Social Sciences (Master's degree or 4-year Bachelor's degree with Research as per NEP 2020)"
+          },
+          "doc_refs": [
+            "marksheet",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.education_level_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Eligible Education Stage & Institution Criteria"
+          }
+        },
+        {
+          "id": "fellowship_tenure_limit",
+          "type": "eligibility",
+          "expr": "applicant.degree_enrolled == 'M.Phil' ? applicant.tenure_years <= params.mphil_max_years : applicant.tenure_years <= params.phd_max_years",
+          "params": {
+            "mphil_max_years": 2,
+            "phd_max_years": 5,
+            "integrated_mphil_phd_max_years": 5,
+            "discontinuation_clause": "Terminates upon dissertation submission or completion of prescribed tenure, whichever is earlier",
+            "source_text": "Ph.D: 5 years (or date of dissertation submission, whichever is earlier)"
+          },
+          "doc_refs": [
+            "research_progress_report",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.fellowship_tenure_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: M.Phil (2 yrs) / Ph.D (5 yrs) maximum fellowship duration"
+          }
+        },
+        {
+          "id": "nfst_selection_criteria",
+          "type": "operational",
+          "expr": "params.net_weight * applicant.net_csir_net_score + params.academic_weight * applicant.masters_or_4yr_bachelor_research_score",
+          "params": {
+            "net_weight": 0.5,
+            "academic_weight": 0.5,
+            "criteria_description": "Merit list prepared with 50% weightage to UGC-NET/CSIR-NET exam marks and 50% weightage to Master's degree or 4-year Bachelor's degree with Research marks on a scale of 100."
+          },
+          "doc_refs": [
+            "ugc_net_scorecard"
+          ],
+          "message_key": "info.nfst_merit_score",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "selection-criteria-for-nfst-from-academic-year-2025-26.pdf"
+          }
+        }
+      ],
+      "benefits": [
+        {
+          "id": "jrf_monthly_stipend",
+          "condition": "applicant.fellowship_tier == 'JRF'",
+          "description": "Junior Research Fellow (JRF) monthly stipend",
+          "amount_monthly": null,
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT"
+        },
+        {
+          "id": "srf_monthly_stipend",
+          "condition": "applicant.fellowship_tier == 'SRF'",
+          "description": "Senior Research Fellow (SRF) monthly stipend",
+          "amount_monthly": null,
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT"
+        },
+        {
+          "id": "research_contingency_grant",
+          "condition": "true",
+          "description": "Annual research contingency grant by discipline",
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "humanities_social_sciences_inr": 20500,
+            "science_engineering_technology_inr": 25000
+          }
+        },
+        {
+          "id": "house_rent_allowance_hra",
+          "condition": "applicant.hosteller == false",
+          "description": "House Rent Allowance as per city classification (X/Y/Z)",
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT",
+          "components": {
+            "rate_guidelines": "Equal to UGC rates (8%, 16%, or 24% based on city categorization)"
+          }
+        },
+        {
+          "id": "divyangjan_escorts_reader_allowance",
+          "condition": "applicant.is_disabled == true",
+          "description": "Reader and escort allowance for physically handicapped research scholars",
+          "amount_monthly": 2000,
+          "currency": "INR",
+          "disbursement_channel": "STUDENT_DBT"
+        }
+      ],
+      "required_documents": [
+        "UGC-NET (JRF) or Joint CSIR-UGC NET qualifying scorecard",
+        "Master's degree or 4-year Bachelor's degree with Research marksheet",
+        "ST/PVTG certificate issued by competent authority",
+        "10th / Matriculation certificate in support of date of birth",
+        "Ph.D Admission/Joining certificate from recognized University/Institute",
+        "Divyangjan certificate (if applicable)"
+      ],
+      "fund_sharing_ratio": "100% Central Sector Scheme",
+      "metadata": {
+        "source_document": "selection-criteria-for-nfst-from-academic-year-2025-26.pdf",
+        "source_url": "https://tribal.nic.in/downloads/circulars/Notice-RegardingSelectionofMeritList-2025-26.pdf",
+        "extraction_confidence": "high",
+        "extraction_notes": "Official Notice File No. 11019/02/2020-Sch dated 01.07.2024: This document revises NFST selection criteria starting AY 2025-26 by making UGC/CSIR NET qualification mandatory and allocating 50% weightage to NET exam and 50% weightage to Master's / 4-year Bachelor's degree with Research.",
+        "data_verified": false
+      }
+    },
+    "source_document": "selection-criteria-for-nfst-from-academic-year-2025-26.pdf",
+    "source_url": "https://tribal.nic.in/downloads/circulars/Notice-RegardingSelectionofMeritList-2025-26.pdf",
+    "extraction_confidence": "high",
+    "extraction_notes": "Official Notice File No. 11019/02/2020-Sch dated 01.07.2024: This document revises NFST selection criteria starting AY 2025-26 by making UGC/CSIR NET qualification mandatory and allocating 50% weightage to NET exam and 50% weightage to Master's / 4-year Bachelor's degree with Research."
+  },
+  {
+    "scheme_code": "NOS",
+    "version_no": 1,
+    "effective_from": "2022-10-07",
+    "effective_to": "2026-07-13",
+    "config": {
+      "rules": [
+        {
+          "id": "income_ceiling",
+          "type": "eligibility",
+          "expr": "applicant.family_income_annual <= params.income_ceiling",
+          "params": {
+            "income_ceiling": 600000,
+            "notes": "Family income from all sources does not exceed Rs. 6,00,000/- per annum. Single child policy: not more than one child of same parents eligible (self-certification required). One-time assistance only under the scheme. Orphan supported by guardian exempted."
+          },
+          "doc_refs": [
+            "income_certificate"
+          ],
+          "message_key": "err.income_ceiling_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Family Income Ceiling from all sources"
+          }
+        },
+        {
+          "id": "category_match",
+          "type": "eligibility",
+          "expr": "applicant.category in params.allowed_categories",
+          "params": {
+            "allowed_categories": [
+              "ST",
+              "PVTG"
+            ]
+          },
+          "doc_refs": [
+            "caste_certificate"
+          ],
+          "message_key": "err.category_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Target Beneficiary Category (ST / PVTG)"
+          }
+        },
+        {
+          "id": "education_level_match",
+          "type": "eligibility",
+          "expr": "applicant.education_level matches params.eligible_level",
+          "params": {
+            "eligible_level": "Post Graduate courses: Master's Degree (1-2 years), Ph.D (4 years), and Post-Doctoral Research (2 years) in top 1,000 QS world ranked foreign universities/institutes"
+          },
+          "doc_refs": [
+            "marksheet",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.education_level_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Eligible Education Stage & Institution Criteria"
+          }
+        },
+        {
+          "id": "overseas_tenure_limit",
+          "type": "eligibility",
+          "expr": "applicant.degree_enrolled == 'Master' ? applicant.tenure_years <= params.masters_max_years : applicant.tenure_years <= params.phd_max_years",
+          "params": {
+            "masters_max_years": 2,
+            "phd_max_years": 4,
+            "postdoc_max_years": 2,
+            "source_text": "Post-Doctoral: 2 years; Ph.D: 4 years; Master's Degree: 1 or 2 years depending upon type and duration of course"
+          },
+          "doc_refs": [
+            "admission_offer_letter",
+            "i20_or_cas_statement"
+          ],
+          "message_key": "err.overseas_tenure_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Master Degree (1-2 yrs) / Ph.D (4 yrs) overseas duration"
+          }
+        },
+        {
+          "id": "nos_age_limit",
+          "type": "eligibility",
+          "expr": "applicant.degree_enrolled == 'PostDoc' ? applicant.age <= params.post_doctoral_research_max_age : applicant.degree_enrolled == 'PhD' ? applicant.age <= params.phd_max_age : applicant.age <= params.masters_degree_max_age",
+          "params": {
+            "post_doctoral_research_max_age": 38,
+            "phd_max_age": 35,
+            "masters_degree_max_age": 32
+          },
+          "doc_refs": [
+            "dob_certificate"
+          ],
+          "message_key": "err.age_limit_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "revised-nos-guidelines.pdf"
+          }
+        },
+        {
+          "id": "nos_slots_allocation",
+          "type": "operational",
+          "expr": "true",
+          "params": {
+            "st_candidates": 17,
+            "pvtg_candidates": 3,
+            "female_earmarked_percentage": 30,
+            "field_of_study_distribution": {
+              "pure_applied_science_engineering_technology_mathematics": 10,
+              "management_economics_finance_law": 4,
+              "agriculture_medicine": 4,
+              "humanities_social_science_fine_arts": 2
+            }
+          },
+          "doc_refs": [],
+          "message_key": "info.slots_distribution"
+        }
+      ],
+      "benefits": [
+        {
+          "id": "nos_maintenance_allowance_usd",
+          "condition": "applicant.destination_country != 'UK'",
+          "description": "Annual maintenance allowance for foreign universities outside the United Kingdom",
+          "amount_annual": 15400,
+          "currency": "USD",
+          "disbursement_channel": "STUDENT_DBT"
+        },
+        {
+          "id": "nos_maintenance_allowance_gbp",
+          "condition": "applicant.destination_country == 'UK'",
+          "description": "Annual maintenance allowance for foreign universities in the United Kingdom",
+          "amount_annual": 9900,
+          "currency": "GBP",
+          "disbursement_channel": "STUDENT_DBT"
+        },
+        {
+          "id": "nos_contingency_allowance",
+          "condition": "true",
+          "description": "Annual contingency and equipment grant for overseas scholars",
+          "components": {
+            "united_states_and_other_countries_usd": 1532,
+            "united_kingdom_gbp": 1116
+          }
+        },
+        {
+          "id": "nos_tuition_fees_direct_payment",
+          "condition": "true",
+          "description": "Actual overseas university tuition fees paid directly to institute or student",
+          "disbursement_channel": "MEA_MISSION",
+          "components": {
+            "tuition_fee_guidelines": "Actual tuition fees and compulsory non-refundable fees required by the foreign institution"
+          }
+        },
+        {
+          "id": "nos_travel_and_medical_insurance",
+          "condition": "true",
+          "description": "Economy class round-trip air passage, visa fees, and compulsory health insurance",
+          "components": {
+            "air_passage": "Economy class airfare by shortest route from India to educational institution and back to India at best available price",
+            "visa_fees": "Actual visa fees in Indian Rupees",
+            "medical_insurance": "Actuals as charged (examined for reasonableness by Indian Mission)",
+            "incidental_journey_max_usd": 20
+          }
+        }
+      ],
+      "required_documents": [
+        "ST certificate issued by competent authority",
+        "PVTG certificate issued by competent authority (if applicable)",
+        "10th Certificate/Marksheet in support of Date of Birth",
+        "Graduation / Post-Graduation mark sheet [Aggregate marks in %] / equivalent % in case of CGPA / Ph.D completion certificate",
+        "Offer of admission in top 1,000 QS world ranked foreign university",
+        "Income Certificate for preceding financial year",
+        "Self-certification for only one child in family and one-time assistance"
+      ],
+      "fund_sharing_ratio": "100% Central Sector Scheme (administered through Indian Missions abroad / MEA)",
+      "metadata": {
+        "source_document": "revised-nos-guidelines.pdf",
+        "source_url": "https://tribal.nic.in/downloads/guidelines/NOS/RevisedGuidelinesNOS07102022.pdf",
+        "extraction_confidence": "high",
+        "extraction_notes": "Official Revised Guidelines for National Overseas Scholarship Scheme for 2021-22 to 2025-26 (issued 07/10/2022). Covers Master's, Ph.D, and Post-Doctoral research.",
+        "data_verified": false
+      }
+    },
+    "source_document": "revised-nos-guidelines.pdf",
+    "source_url": "https://tribal.nic.in/downloads/guidelines/NOS/RevisedGuidelinesNOS07102022.pdf",
+    "extraction_confidence": "high",
+    "extraction_notes": "Official Revised Guidelines for National Overseas Scholarship Scheme for 2021-22 to 2025-26 (issued 07/10/2022). Covers Master's, Ph.D, and Post-Doctoral research."
+  },
+  {
+    "scheme_code": "NOS",
+    "version_no": 2,
+    "effective_from": "2026-07-14",
+    "effective_to": null,
+    "config": {
+      "rules": [
+        {
+          "id": "income_ceiling",
+          "type": "eligibility",
+          "expr": "applicant.family_income_annual <= params.income_ceiling",
+          "params": {
+            "income_ceiling": 600000,
+            "notes": "Family income from all sources does not exceed Rs. 6,00,000/- per annum. Single child in family restriction and one-time assistance policy maintained."
+          },
+          "doc_refs": [
+            "income_certificate"
+          ],
+          "message_key": "err.income_ceiling_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Family Income Ceiling from all sources"
+          }
+        },
+        {
+          "id": "category_match",
+          "type": "eligibility",
+          "expr": "applicant.category in params.allowed_categories",
+          "params": {
+            "allowed_categories": [
+              "ST",
+              "PVTG"
+            ]
+          },
+          "doc_refs": [
+            "caste_certificate"
+          ],
+          "message_key": "err.category_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Target Beneficiary Category (ST / PVTG)"
+          }
+        },
+        {
+          "id": "education_level_match",
+          "type": "eligibility",
+          "expr": "applicant.education_level matches params.eligible_level",
+          "params": {
+            "eligible_level": "Post Graduate courses: Master's Degree (1-2 years) and Ph.D (4 years) only. Post-Doctoral Research is omitted."
+          },
+          "doc_refs": [
+            "marksheet",
+            "bonafide_certificate"
+          ],
+          "message_key": "err.education_level_ineligible",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Eligible Education Stage & Institution Criteria"
+          }
+        },
+        {
+          "id": "overseas_tenure_limit",
+          "type": "eligibility",
+          "expr": "applicant.degree_enrolled == 'Master' ? applicant.tenure_years <= params.masters_max_years : applicant.tenure_years <= params.phd_max_years",
+          "params": {
+            "masters_max_years": 2,
+            "phd_max_years": 4,
+            "postdoc_max_years": 2,
+            "source_text": "Master's Degree: 1 or 2 years; Ph.D: 4 years"
+          },
+          "doc_refs": [
+            "admission_offer_letter",
+            "i20_or_cas_statement"
+          ],
+          "message_key": "err.overseas_tenure_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "Clause: Master Degree (1-2 yrs) / Ph.D (4 yrs) overseas duration"
+          }
+        },
+        {
+          "id": "nos_age_limit",
+          "type": "eligibility",
+          "expr": "applicant.degree_enrolled == 'PhD' ? applicant.age <= params.phd_max_age : applicant.age <= params.masters_degree_max_age",
+          "params": {
+            "phd_max_age": 35,
+            "masters_degree_max_age": 32
+          },
+          "doc_refs": [
+            "dob_certificate"
+          ],
+          "message_key": "err.age_limit_exceeded",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "amendment-in-eligibility-criteria-and-courses-covered-under-the-nos-scheme-for-st-stu.pdf"
+          }
+        },
+        {
+          "id": "nos_slots_allocation",
+          "type": "operational",
+          "expr": "true",
+          "params": {
+            "st_candidates": 17,
+            "pvtg_candidates": 3,
+            "female_earmarked_percentage": 30
+          },
+          "doc_refs": [],
+          "message_key": "info.slots_distribution"
+        },
+        {
+          "id": "nos_selection_priority_rules",
+          "type": "operational",
+          "expr": "applicant.university_qs_ranking <= params.priority_qs_rank_threshold ? 'priority' : 'interview_pool'",
+          "params": {
+            "priority_qs_rank_threshold": 1000,
+            "priority_guidelines": "First priority to candidates holding offer of admission from top 1,000 QS ranked institutes yet to join; merit list based on QS ranking (ties broken by qualifying exam marks); vacant slots filled through personal interview by expert committee (GRE/GMAT/TOEFL preferred). Verification conducted through respective State/UT."
+          },
+          "doc_refs": [
+            "admission_offer_letter"
+          ],
+          "message_key": "info.nos_selection_priority",
+          "verification": {
+            "status": "PENDING_AUDIT",
+            "source_clause": "amendment-in-eligibility-criteria-and-courses-covered-under-the-nos-scheme-for-st-stu.pdf"
+          }
+        }
+      ],
+      "benefits": [
+        {
+          "id": "nos_maintenance_allowance_usd",
+          "condition": "applicant.destination_country != 'UK'",
+          "description": "Annual maintenance allowance for foreign universities outside the United Kingdom",
+          "amount_annual": 15400,
+          "currency": "USD",
+          "disbursement_channel": "STUDENT_DBT"
+        },
+        {
+          "id": "nos_maintenance_allowance_gbp",
+          "condition": "applicant.destination_country == 'UK'",
+          "description": "Annual maintenance allowance for foreign universities in the United Kingdom",
+          "amount_annual": 9900,
+          "currency": "GBP",
+          "disbursement_channel": "STUDENT_DBT"
+        },
+        {
+          "id": "nos_contingency_allowance",
+          "condition": "true",
+          "description": "Annual contingency and equipment grant for overseas scholars",
+          "components": {
+            "united_states_and_other_countries_usd": 1532,
+            "united_kingdom_gbp": 1116
+          }
+        },
+        {
+          "id": "nos_tuition_fees_direct_payment",
+          "condition": "true",
+          "description": "Actual overseas university tuition fees paid directly to institute or student",
+          "disbursement_channel": "MEA_MISSION",
+          "components": {
+            "tuition_fee_guidelines": "Actual tuition fees and compulsory non-refundable fees as per actuals"
+          }
+        },
+        {
+          "id": "nos_travel_and_medical_insurance",
+          "condition": "true",
+          "description": "Economy class round-trip air passage, visa fees, and compulsory health insurance",
+          "components": {
+            "air_passage": "Economy class airfare by shortest route",
+            "visa_fees": "Actual visa fees in Indian Rupees",
+            "medical_insurance": "Actuals as charged",
+            "incidental_journey_max_usd": 20
+          }
+        }
+      ],
+      "required_documents": [
+        "ST certificate issued by competent authority",
+        "PVTG certificate issued by competent authority (if applicable)",
+        "10th Certificate/Marksheet in support of Date of Birth",
+        "Graduation / Post-Graduation mark sheet with conversion formula",
+        "Offer of admission in top 1,000 QS ranked foreign university",
+        "Income Certificate for preceding financial year",
+        "Self-certification for only one child in family and one-time assistance"
+      ],
+      "fund_sharing_ratio": "100% Central Sector Scheme",
+      "metadata": {
+        "source_document": "amendment-in-eligibility-criteria-and-courses-covered-under-the-nos-scheme-for-st-stu.pdf",
+        "source_url": "https://tribal.nic.in/downloads/guidelines/NOS/Amendment_NOS-2627.pdf",
+        "extraction_confidence": "high",
+        "extraction_notes": "Official Amendment File No. 11016/22/2018-Sch dated 14.07.2026 applicable from selection year 2026-27: This document revises NOS eligibility by omitting Post-Doctoral Research from the scheme and updating Para 4.4 selection priority rules.",
+        "data_verified": false
+      }
+    },
+    "source_document": "amendment-in-eligibility-criteria-and-courses-covered-under-the-nos-scheme-for-st-stu.pdf",
+    "source_url": "https://tribal.nic.in/downloads/guidelines/NOS/Amendment_NOS-2627.pdf",
+    "extraction_confidence": "high",
+    "extraction_notes": "Official Amendment File No. 11016/22/2018-Sch dated 14.07.2026 applicable from selection year 2026-27: This document revises NOS eligibility by omitting Post-Doctoral Research from the scheme and updating Para 4.4 selection priority rules."
+  }
+]

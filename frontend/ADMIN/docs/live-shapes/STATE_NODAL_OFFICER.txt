@@ -1,0 +1,568 @@
+# Live response shapes for STATE_NODAL_OFFICER (2026-09-29T16:30:39.206Z)
+# field: type [(absent in n/m)] [values=[...] for enum-like fields only]
+
+## GET /auth/me -> HTTP 200
+  accountId: string
+  role: string  values=[STATE_NODAL_OFFICER]
+  officerId: string
+  jurisdictionState: string
+  jurisdictionDistrict: null
+
+## GET /officers/me/preferences -> HTTP 200
+  officer_id: string
+  preferred_language: string
+  is_default: boolean
+  supported_languages: array of string
+  updated_at: null
+
+## GET /applications/queue -> HTTP 200
+  role: string  values=[STATE_NODAL_OFFICER]
+  stages: array of string
+  count: number
+  applications: array of object
+    id: string
+    application_no: string
+    applicant_id: string
+    scheme_id: string
+    scheme_version_id: string
+    academic_year: string
+    current_stage: string  values=[SNO_VERIFIED]
+    status: string  values=[UNDER_REVIEW]
+    jurisdiction_state: string
+    jurisdiction_district: string
+    institution_name: null|string
+    institution_code: null|string
+    assigned_officer_id: null
+    submitted_at: string
+    stage_entered_at: string
+    stage_due_at: string
+    needs_eligibility_review: boolean
+    sla: object
+      stage: string  values=[SNO_VERIFIED]
+      stage_entered_at: string
+      sla_days: number
+      due_at: string
+      state: string
+    fraud: object
+      held: boolean
+      open_flags: number
+      flags: array (empty)
+        id: string
+        flag_type: string  values=[FUZZY_IDENTITY_MATCH, REPEATED_CERTIFICATE_NUMBER]
+        severity: string  values=[LOW, MEDIUM]
+        status: string  values=[OPEN]
+
+## GET /applications/queue?fraud=HIGH -> HTTP 200
+  role: string  values=[STATE_NODAL_OFFICER]
+  stages: array of string
+  count: number
+  applications: array (empty)
+
+## GET /applications/queue?fraud=ANY -> HTTP 200
+  role: string  values=[STATE_NODAL_OFFICER]
+  stages: array of string
+  count: number
+  applications: array of object
+    id: string
+    application_no: string
+    applicant_id: string
+    scheme_id: string
+    scheme_version_id: string
+    academic_year: string
+    current_stage: string  values=[SNO_VERIFIED]
+    status: string  values=[UNDER_REVIEW]
+    jurisdiction_state: string
+    jurisdiction_district: string
+    institution_name: null
+    institution_code: null
+    assigned_officer_id: null
+    submitted_at: string
+    stage_entered_at: string
+    stage_due_at: string
+    needs_eligibility_review: boolean
+    sla: object
+      stage: string  values=[SNO_VERIFIED]
+      stage_entered_at: string
+      sla_days: number
+      due_at: string
+      state: string
+    fraud: object
+      held: boolean
+      open_flags: number
+      flags: array of object
+        id: string
+        flag_type: string  values=[FUZZY_IDENTITY_MATCH, REPEATED_CERTIFICATE_NUMBER]
+        severity: string  values=[LOW, MEDIUM]
+        status: string  values=[OPEN]
+
+## GET /applications/queue?needs_eligibility_review=true -> HTTP 200
+  role: string  values=[STATE_NODAL_OFFICER]
+  stages: array of string
+  count: number
+  applications: array (empty)
+
+## GET /applications/:id -> HTTP 200
+  id: string
+  application_no: string
+  applicant_id: string
+  scheme_id: string
+  scheme_version_id: string
+  academic_year: string
+  current_stage: string  values=[SNO_VERIFIED]
+  status: string  values=[UNDER_REVIEW]
+  jurisdiction_state: string
+  jurisdiction_district: string
+  institution_name: null
+  institution_code: null
+  course_name: null
+  course_year: null
+  assigned_officer_id: null
+  submitted_at: string
+  stage_entered_at: string
+  stage_due_at: string
+  needs_eligibility_review: boolean
+  aadhaar_authentication: object
+    status: string  values=[NOT_ATTEMPTED]
+    aadhaar_masked: null
+    at: null
+
+## GET /applications/:id/documents -> HTTP 200
+  application_id: string
+  ml_mode: string
+  mock_notice: string
+  flags: object
+    needs_eligibility_review: boolean
+    document_consistency_status: string  values=[CONSISTENT]
+    document_consistency_details: object
+      checks: object
+        names_match: boolean
+      engine: string
+      confidence: object
+        names_match: number
+      min_confidence: number
+      documents_compared: number
+    document_consistency_checked_at: string
+  checklist: array of string
+  slots: array of object
+    slot: string
+    document_id: string
+    state: string
+  documents: array of object
+    document_id: string
+    application_id: string
+    document_type: string  values=[Family Income Certificate, ST certificate issued by competent authority]
+    file_name: string
+    mime_type: string  values=[image/png]
+    file_size_bytes: number
+    file_sha256: string
+    uploaded_at: string
+    state: string
+    source: string
+    digilocker: null
+    quality: object
+      usable: boolean
+      issues: array (empty)
+      confidence: number
+    verification_status: string  values=[PENDING, VERIFIED]
+    extraction: object
+      id: string
+      status: string  values=[COMPLETED]
+      error_code: null
+      engine: string
+      classification: object
+        type: string  values=[CASTE_CERTIFICATE, INCOME_CERTIFICATE]
+        confidence: number
+        alternatives: array of object
+          type: string  values=[marksheet]
+          confidence: number
+        matches_slot: boolean
+      review_status: string  values=[AUTO_ACCEPTED, NEEDS_REVIEW, OFFICER_CONFIRMED]
+      review_threshold: number
+      fields: array of object
+        name: string
+        value: string|number
+        confidence: number
+        review: string
+        sensitive: boolean
+        corrected: boolean
+      eligibility_mismatches: array|null of object
+        field: string
+        source: string
+        sensitive: boolean
+      confirmed_by_officer_id: null|string
+      confirmed_at: null|string
+      processed_at: string
+
+## GET /documents/:id -> HTTP 200
+  ml_mode: string
+  mock_notice: string
+  document_id: string
+  application_id: string
+  document_type: string  values=[ST certificate issued by competent authority]
+  file_name: string
+  mime_type: string  values=[image/png]
+  file_size_bytes: number
+  file_sha256: string
+  uploaded_at: string
+  state: string
+  source: string
+  digilocker: null
+  quality: object
+    usable: boolean
+    issues: array (empty)
+    confidence: number
+  verification_status: string  values=[PENDING]
+  extraction: object
+    id: string
+    status: string  values=[COMPLETED]
+    error_code: null
+    engine: string
+    classification: object
+      type: string  values=[CASTE_CERTIFICATE]
+      confidence: number
+      alternatives: array of object
+        type: string  values=[marksheet]
+        confidence: number
+      matches_slot: boolean
+    review_status: string  values=[NEEDS_REVIEW]
+    review_threshold: number
+    fields: array of object
+      name: string
+      value: string
+      confidence: number
+      review: string
+      sensitive: boolean
+      corrected: boolean
+    eligibility_mismatches: null
+    confirmed_by_officer_id: null
+    confirmed_at: null
+    processed_at: string
+
+## GET /applications/:id/fraud-flags -> HTTP 200
+  application_id: string
+  application_no: string
+  current_stage: string  values=[SNO_VERIFIED]
+  held: boolean
+  holding_flag_ids: array (empty)
+  flags: array of object
+    id: string
+    created_at: string
+    flag_type: string  values=[FUZZY_IDENTITY_MATCH, REPEATED_CERTIFICATE_NUMBER]
+    severity: string  values=[LOW, MEDIUM]
+    status: string  values=[OPEN]
+    subject_type: string  values=[APPLICATION]
+    application_id: string
+    institution_code: null
+    related_application_ids: array of string
+    related_document_ids: array (empty)
+    confidence: number|null
+    summary: string
+    evidence: object
+      score: number (absent in 6/17)
+      calibration: string (absent in 6/17)
+      dob_relation: string (absent in 6/17)
+      name_relation: string (absent in 6/17)
+      district_match: boolean (absent in 6/17)
+      matched_application_ids: array of string
+      field: string (absent in 11/17)
+      match: string (absent in 11/17)
+      sources: array of string (absent in 11/17)
+      key_version: number (absent in 11/17)
+      matched_document_ids: array of string (absent in 11/17)
+      other_applicant_count: number (absent in 11/17)
+    detector: string
+    reviewed_by_officer_id: null
+    reviewed_at: null
+    review_notes: null
+
+## GET /analytics/fraud -> HTTP 200
+  meta: object
+    view: string
+    cohort: string
+    from: string
+    to: string
+    scheme: null
+    academic_year: null
+    fixtures: string
+    read_only_transaction: boolean
+    scope: string
+    small_count_threshold: number
+    generated_at: string
+    content: string
+  application_flags: array of object
+    flag_type: string  values=[DUPLICATE_FILE_HASH, SHARED_BANK_ACCOUNT]
+    severity: string  values=[HIGH]
+    status: string  values=[OPEN]
+    flags: number
+    applications: number
+  institution_flags: array (empty)
+  held_applications: object
+    total: number
+    by_stage: array of object
+      stage: string  values=[INO_VERIFIED]
+      applications: number
+
+## GET /analytics/funnel -> HTTP 200
+  meta: object
+    view: string
+    cohort: string
+    from: string
+    to: string
+    scheme: null
+    academic_year: null
+    fixtures: string
+    read_only_transaction: boolean
+    scope: string
+    small_count_threshold: number
+    generated_at: string
+  steps: array of object
+    step: string
+    count: number
+    of: null|string
+    base: null|number
+    conversion: null|number
+  current: object
+    pending: number
+    under_review: number
+    defective: number
+    rejected: number
+  held: object
+    count: number
+    note: string
+  state_dbt: object
+    count: number
+    status: string  values=[SELECTED_DISBURSEMENT_BY_STATE_DBT]
+    note: string
+
+## GET /analytics/sla -> HTTP 200
+  meta: object
+    view: string
+    cohort: string
+    from: string
+    to: string
+    scheme: null
+    academic_year: null
+    fixtures: string
+    read_only_transaction: boolean
+    scope: string
+    small_count_threshold: number
+    generated_at: string
+    sla_source: string
+  stages: array of object
+    stage: string  values=[DEFECTIVE, DNO_VERIFIED, INO_VERIFIED, MINISTRY_APPROVED, SNO_VERIFIED]
+    sla_days: number
+    completed_stays: number
+    median_hours: number|null
+    p90_hours: number|null
+    completed_past_sla: number
+    in_stage_now: number
+    in_stage_median_age_hours: number
+    in_stage_past_sla: number
+    in_stage_past_sla_share: number
+  longest_waits: array of string
+
+## GET /analytics/verification-quality -> HTTP 200
+  meta: object
+    view: string
+    cohort: string
+    from: string
+    to: string
+    scheme: null
+    academic_year: null
+    fixtures: string
+    read_only_transaction: boolean
+    scope: string
+    small_count_threshold: number
+    generated_at: string
+    meaning: string
+    document_type: string  values=[the checklist slot mapped to a canonical document type (UNMAPPED when the slot has none); DIGILOCKER rows are issuer data, not machine-read (no auto_accept_rate)]
+    officer_actions: string
+    read: string
+    suppression: string
+  rows: array of object
+    scheme_code: string
+    document_type: string  values=[BANK_PASSBOOK, BONAFIDE, CASTE_CERTIFICATE, FEE_RECEIPT, INCOME_CERTIFICATE, MARKSHEET, OFFER_LETTER, UNMAPPED]
+    source: string
+    uploaded: number
+    rejected_unreadable: number
+    processed: number
+    extraction_failed: number
+    auto_verified: number
+    sent_to_review: number
+    awaiting_officer: number
+    officer_decided: number
+    officer_corrected: number
+    type_overridden: number
+    overridden: number
+    auto_accept_rate: number
+    override_rate: null
+
+## GET /selection-lists -> HTTP 200
+  lists: array of object
+    id: string
+    selection_run_id: string
+    scheme_code: string
+    academic_year: string
+    status: string  values=[DRAFT, FINAL_PUBLISHED, PROVISIONAL_PUBLISHED]
+    approvals_required: number
+    objection_window_days: number
+    provisional_published_at: string|null
+    window_closes_at: string|null
+    window_closed_at: string|null
+    window_closed_early: boolean
+    final_published_at: string|null
+    created_at: string
+
+## GET /selection-lists/:id -> HTTP 200
+  id: string
+  selection_run_id: string
+  scheme_code: string
+  academic_year: string
+  status: string  values=[FINAL_PUBLISHED]
+  approvals_required: number
+  objection_window_days: number
+  provisional_published_at: string
+  window_closes_at: string
+  window_closed_at: string
+  window_closed_early: boolean
+  final_published_at: string
+  created_at: string
+  list_decisions: array of object
+    kind: string
+    reason: null|string
+    officer_id: string
+    created_at: string
+  entries_in_scope: number
+  entries: array of object
+    id: string
+    application_id: string
+    computed_outcome: string  values=[SELECTED]
+    computed_rank: null
+    not_selected_reason: null
+    vertical_category: string
+    horizontal_reservation: null
+    committee_decision: null
+    final_outcome: string  values=[SELECTED]
+    decisions: array (empty)
+    application_no: string
+
+## GET /analytics/fairness -> HTTP 200
+  meta: object
+    view: string
+    scheme: string
+    academic_year: string
+    cohort: string
+    selected_means: string
+    scope: string
+    fixtures: string
+    small_count_threshold: number
+    suppression: string
+    institution_type: string  values=[derived from the institution code family (AISHE U- / C- / S-, 11-digit U-DISE, else OTHER); no institution registry exists]
+    max_buckets_per_dimension: number
+    generated_at: string
+  total: object
+    applied: number
+    selected: number
+    selection_rate: number
+  dimensions: object
+    category: array of object
+      bucket: string
+      applied: number
+      selected: number
+      selection_rate: number
+    gender: array of object
+      bucket: string
+      applied: number
+      selected: string
+      selection_rate: string
+    pwd_status: array of object
+      bucket: string
+      applied: number
+      selected: number
+      selection_rate: number
+    district: array of object
+      bucket: string
+      applied: number
+      selected: number|string
+      selection_rate: number|string
+    institution_type: array of object
+      bucket: string
+      applied: number
+      selected: number
+      selection_rate: number
+
+## GET /grievances -> HTTP 200
+  (top-level array, 7 element(s))
+  id: string
+  application_id: string
+  raised_by_applicant_id: string
+  subject_type: string  values=[APPLICATION, SELECTION_OBJECTION]
+  selection_id: null
+  disbursement_id: null
+  selection_run_id: null|string
+  description: string
+  status: string  values=[OPEN, REJECTED, RESOLVED]
+  status_entered_at: string
+  sla_due_at: string|null
+  resolution_note: null|string
+  resolved_by_officer_id: null|string
+  resolved_at: null|string
+  created_at: string
+
+## GET /audit/verify -> HTTP 403
+  error: code=FORBIDDEN reason=role_not_permitted
+
+## GET /authorization-denials -> HTTP 200
+  denials: array of object
+    id: string
+    occurred_at: string
+    actor_user_id: string
+    actor_id: string|null
+    actor_type: string  values=[APPLICANT, OFFICER]
+    actor_role: string  values=[APPLICANT, AUDITOR, COMMITTEE, DISTRICT_NODAL_OFFICER, INSTITUTE_NODAL_OFFICER, STATE_NODAL_OFFICER]
+    action_attempted: string
+    subject_type: null|string  values=[application, correction_request, document, notification, officer, sanction_order]
+    subject_id: null|string
+    denial_reason: string
+    details: object
+      route: string
+      method: string
+      origin: string
+      params: object
+        id: string (absent in 33/50)
+        itemId: string (absent in 48/50)
+      reason: string (absent in 10/50)
+      error_code: string (absent in 3/50)
+      state: string (absent in 48/50)
+      allowed: array of string (absent in 49/50)
+      transition: string (absent in 48/50)
+      permitted: array of string (absent in 49/50)
+      guard: string (absent in 47/50)
+      table: string (absent in 47/50)
+    jurisdiction_state: string
+    jurisdiction_district: null|string
+    jurisdiction_source: string
+    ip_address: string
+    request_id: string
+    prev_hash: string
+    record_hash: string
+    seq: string
+    hash_version: number
+    hash_input: string
+
+## GET /document-access -> HTTP 200
+  accesses: array of object
+    id: string
+    accessed_at: string
+    actor_account_id: string
+    actor_role: string  values=[APPLICANT, STATE_NODAL_OFFICER]
+    access_kind: string
+    resource_type: string  values=[application_documents, document]
+    resource_id: string
+    application_id: string
+    document_id: string|null
+    route: string
+    request_id: string
+    jurisdiction_state: string
+    jurisdiction_district: string
+

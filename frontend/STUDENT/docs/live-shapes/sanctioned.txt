@@ -1,0 +1,382 @@
+# Live shapes: sanctioned account (2026-09-29)
+# API http://localhost:3000/api/v1. Field names and JSON types only; values only for status/stage/severity/outcome/reason_code.
+
+## POST /auth/login (field names only) -> HTTP 200
+  object
+    access_token: string
+    expires_in: number
+    refresh_expires_in: number
+    refresh_token: string
+    token_type: string
+
+## GET /auth/me -> HTTP 200
+  object
+    accountId: string
+    jurisdictionDistrict: null
+    jurisdictionState: null
+    officerId: null
+    role: string
+
+## GET /applicants/me -> HTTP 200
+  object
+    annual_income: string
+    applicant_id: string
+    bank_account_masked: string
+    caste_cert_number_masked: string
+    category: string
+    disability_percentage: null
+    disability_type: null
+    dob: string
+    domicile_district: string
+    domicile_state: string
+    editable_fields: array (2 items)
+      []: string
+    email: string
+    first_name: string
+    gender: string
+    is_disabled: boolean
+    last_name: string
+    phone: null
+    preferred_language: string
+    pvtg_group: null
+    supported_languages: array (3 items)
+      []: string
+    updated_at: string
+
+## GET /applicants/me/consents -> HTTP 200
+  object
+    history: array (3 items)
+      []: object
+        at: string
+        language: string
+        method: string
+        notice_version: string
+        purpose: string
+        status: string
+    language: string
+    missing_for_applications: array (0 items)
+    notice_version: string
+    purposes: array (3 items)
+      []: object
+        current: boolean
+        purpose: string
+        required_for_applications: boolean
+        status: string
+        status_notice_version: string
+        text: string
+        text_key: string
+        title: string
+        title_key: string
+  values status: GIVEN
+
+## GET /application-drafts -> HTTP 200
+  array (0 items)
+
+## GET /notifications -> HTTP 200
+  object
+    count: number
+    notifications: array (6 items)
+      []: object
+        application_id: string
+        body: string
+        created_at: string
+        event_type: string
+        id: string
+        locale: string
+        read_at: null
+        subject: string
+        template_key: string
+
+## GET /applications -> HTTP 200
+  array (1 items)
+    []: object
+      academic_year: string
+      applicant_id: string
+      application_no: string
+      assigned_officer_id: null
+      course_name: string
+      course_year: number
+      current_stage: string
+      id: string
+      institution_code: string
+      institution_name: string
+      jurisdiction_district: string
+      jurisdiction_state: string
+      needs_eligibility_review: boolean
+      scheme_id: string
+      scheme_version_id: string
+      stage_due_at: string
+      stage_entered_at: string
+      status: string
+      submitted_at: string
+  values current_stage: MINISTRY_APPROVED
+  values status: APPROVED
+
+## GET /applications/{id} (application #1) -> HTTP 200
+  object
+    academic_year: string
+    applicant_id: string
+    application_no: string
+    assigned_officer_id: null
+    course_name: string
+    course_year: number
+    current_stage: string
+    id: string
+    institution_code: string
+    institution_name: string
+    jurisdiction_district: string
+    jurisdiction_state: string
+    needs_eligibility_review: boolean
+    scheme_id: string
+    scheme_version_id: string
+    stage_due_at: string
+    stage_entered_at: string
+    status: string
+    submitted_at: string
+  values current_stage: MINISTRY_APPROVED
+  values status: APPROVED
+
+## GET /applications/{id}/history (application #1) -> HTTP 200
+  object
+    application_id: string
+    history: array (4 items)
+      []: object
+        at: string
+        from_stage: string
+        to_stage: string
+        trigger_action: string
+  values from_stage: DNO_VERIFIED, INO_VERIFIED, SNO_VERIFIED, SUBMITTED
+  values to_stage: DNO_VERIFIED, INO_VERIFIED, MINISTRY_APPROVED, SNO_VERIFIED
+  values trigger_action: eligibility_passed, verify
+
+## GET /applications/{id}/documents (application #1) -> HTTP 200
+  object
+    application_id: string
+    checklist: array (11 items)
+      []: string
+    documents: array (10 items)
+      []: object
+        application_id: string
+        digilocker: null
+        document_id: string
+        document_type: string
+        extraction: object
+          classification: object
+            alternatives: array (10 items)
+              []: object
+                confidence: number
+                type: string
+            confidence: number
+            matches_slot: boolean
+            type: string
+          confirmed_at: null
+          confirmed_by_officer_id: null
+          eligibility_mismatches: null
+          engine: string
+          error_code: null
+          fields: array (30 items)
+            []: object
+              confidence: number
+              corrected: boolean
+              name: string
+              review: string
+              sensitive: boolean
+              value: string
+          id: string
+          processed_at: string
+          review_status: string
+          review_threshold: number
+          status: string
+        file_name: string
+        file_sha256: string
+        file_size_bytes: number
+        mime_type: string
+        quality: object
+          confidence: number
+          issues: array (0 items)
+          usable: boolean
+        source: string
+        state: string
+        uploaded_at: string
+        verification_status: string
+    flags: object
+      document_consistency_checked_at: null
+      document_consistency_details: null
+      document_consistency_status: null
+      needs_eligibility_review: boolean
+    ml_mode: string
+    mock_notice: string
+    slots: array (11 items)
+      []: object
+        document_id: null|string
+        slot: string
+        state: string
+  values document_consistency_status: null
+  values verification_status: PENDING
+  values status: COMPLETED
+  values review_status: NEEDS_REVIEW
+
+## GET /documents/{id} (application #1, first document) -> HTTP 200
+  object
+    application_id: string
+    digilocker: null
+    document_id: string
+    document_type: string
+    extraction: object
+      classification: object
+        alternatives: array (1 items)
+          []: object
+            confidence: number
+            type: string
+        confidence: number
+        matches_slot: boolean
+        type: string
+      confirmed_at: null
+      confirmed_by_officer_id: null
+      eligibility_mismatches: null
+      engine: string
+      error_code: null
+      fields: array (3 items)
+        []: object
+          confidence: number
+          corrected: boolean
+          name: string
+          review: string
+          sensitive: boolean
+          value: string
+      id: string
+      processed_at: string
+      review_status: string
+      review_threshold: number
+      status: string
+    file_name: string
+    file_sha256: string
+    file_size_bytes: number
+    mime_type: string
+    ml_mode: string
+    mock_notice: string
+    quality: object
+      confidence: number
+      issues: array (0 items)
+      usable: boolean
+    source: string
+    state: string
+    uploaded_at: string
+    verification_status: string
+  values verification_status: PENDING
+  values status: COMPLETED
+  values review_status: NEEDS_REVIEW
+
+## GET /applications/{id}/deficiencies (application #1) -> HTTP 200
+  object
+    application_id: string
+    application_no: string
+    current_stage: string
+    deficiencies: array (0 items)
+  values current_stage: MINISTRY_APPROVED
+
+## GET /applications/{id}/selection-result (application #1) -> HTTP 200
+  object
+    application_id: string
+    application_no: string
+    committee_decision: null
+    computed_outcome: string
+    computed_rank: number
+    current_outcome: string
+    final_outcome: string
+    horizontal_reservation: null
+    list: object
+      academic_year: string
+      id: string
+      scheme_code: string
+      selection_run_id: string
+      status: string
+      window_closes_at: string
+    not_selected_reason: null
+    score: object
+      breakdown: object
+        direction: string
+        evaluation_run_id: string
+        read_from: string
+        rule_id: string
+      score_type: string
+      score_value: number
+    vertical_category: string
+  values status: FINAL_PUBLISHED
+  values computed_outcome: SELECTED
+  values final_outcome: SELECTED
+  values current_outcome: SELECTED
+
+## GET /schemes (public) -> HTTP 200
+  object
+    schemes: array (5 items)
+      []: object
+        effective_from: string
+        effective_to: null
+        scheme_code: string
+        scheme_name: string
+        scheme_version_id: string
+        version_no: number
+
+## POST /schemes/check-eligibility (public, empty profile) -> HTTP 200
+  object
+    eligible: array (0 items)
+    evaluated_at: string
+    evaluation_run_id: null
+    indeterminate: array (7 items)
+      []: object
+        eligible: boolean
+        error_rules: array (21 items)
+          []: object
+            explanation: string
+            rule_id: string
+        failed_rules: array (0 items)
+        outcome: string
+        rules: array (29 items)
+          []: object
+            decisive: null
+            explanation: null|string
+            message_key: string
+            rule_id: string
+            rule_type: string
+            value: boolean|null
+            verdict: string
+        scheme_code: string
+        scheme_name: string
+        scheme_version_id: string
+        version_no: number
+    not_eligible: array (0 items)
+    schemes_evaluated: number
+    storage: object
+      persisted: boolean
+      reason: string
+      redacted_fields: array (0 items)
+      redaction_policy: null
+  values outcome: INDETERMINATE
+
+## GET /schemes/{code}/versions/{v}/form-schema (public) -> HTTP 200
+  object
+    documents: object
+      checklist: array (0 items)
+      required_documents: array (0 items)
+      rule_doc_refs: array (0 items)
+    fields: array (3 items)
+      []: object
+        key: string
+        limits: array (0 items)
+        options: array (2 items)
+          []: string
+        path: string
+        types: array (2 items)
+          []: string
+        used_by: array (3 items)
+          []: object
+            rule_id: string
+            rule_type: string
+    scheme_code: string
+    scheme_name: string
+    scheme_version_id: string
+    status: string
+    unparseable_rules: array (0 items)
+    version_no: number
+  values status: active

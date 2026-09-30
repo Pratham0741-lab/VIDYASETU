@@ -1,0 +1,18 @@
+import { call, login, save, state } from './lib.mjs';
+import { psql } from './psql.mjs';
+const S = state.P.T4.selectionId;
+console.log('open objections for the run:', psql(`SELECT count(*) FROM grievances WHERE subject_type='SELECTION_OBJECTION' AND selection_run_id='${state.run}' AND status IN ('OPEN','IN_PROGRESS');`));
+const min = await login('ministry.dn@example.org');
+const head = `SELECT count(*) || ' rows, head=' || coalesce((SELECT left(record_hash,16) FROM audit_logs ORDER BY created_at DESC, id DESC LIMIT 1),'-') FROM audit_logs;`;
+const before = psql(head);
+const c = await call('POST', `/selections/${S}/confirm`, {}, min, { raw: true });
+const after = psql(head);
+console.log(`\nconfirm T4 WITHOUT override (selection ${S}):\n  HTTP ${c.status} ${JSON.stringify(c.body)}`);
+console.log(`audit_logs immediately before: ${before}\naudit_logs immediately after:  ${after}`);
+state.p2 = { selectionId: S, requestId: c.body.requestId }; save();
+console.log('\n--- authorization_denials row for this selection:');
+console.log(psql(`SELECT id, occurred_at, actor_user_id, actor_id, actor_type, actor_role, action_attempted, subject_type, subject_id, denial_reason, jsonb_pretty(details) AS details, jurisdiction_state, jurisdiction_district, jurisdiction_source, ip_address, request_id, prev_hash, record_hash FROM authorization_denials WHERE subject_id = '${S}';`, ['-x']));
+console.log('\n--- audit_logs for this selection (the refused confirm changed nothing, so nothing new is audited):');
+console.log(psql(`SELECT action, row_data->>'selection_status' AS status, created_at FROM audit_logs WHERE table_name='selections' AND record_id='${S}' ORDER BY created_at;`, []));
+console.log('\n--- actor check: the officer row for ministry.dn');
+console.log(psql(`SELECT a.id AS account_id, o.id AS officer_id, r.name AS role FROM accounts a JOIN officers o ON o.user_id=a.id JOIN roles r ON r.id=o.role_id WHERE a.email='ministry.dn@example.org';`, []));

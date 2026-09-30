@@ -1,0 +1,27 @@
+{
+  "name": "sih_1",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "validate:rules": "tsx scripts/validate-rule-params.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "prisma": "^5.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "ajv": "^8.20.0",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}

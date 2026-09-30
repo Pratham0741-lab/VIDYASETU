@@ -1,0 +1,15 @@
+import { call, enc, login, state, upload, waitProcessed } from './p7.mjs';
+const t = await login(state.B.email);
+const slot = 'Family Income Certificate';
+const r = await upload(t, state.B.applicationId, slot, `clean;type=${enc(slot)};holder_name=Ravi%20Munda;family_income_annual=900000;certificate_number=JH-INC-2026-7781`);
+const d = await waitProcessed(t, r.body.document_id);
+console.log(`upload HTTP ${r.status} -> ${d.state} (MOCK ML)`);
+console.log(`  extracted family_income_annual (live response, decrypted for this caller) = ${d.extraction.fields.find((f) => f.name === 'family_income_annual').value}`);
+console.log(`  eligibility_mismatches = ${JSON.stringify(d.extraction.eligibility_mismatches)}`);
+const ino = await login('ino.ranchi7@example.org');
+const l = await call('GET', `/applications/${state.B.applicationId}/documents`, undefined, ino);
+console.log(`  application flags: needs_eligibility_review=${l.flags.needs_eligibility_review}`);
+const q = await call('GET', '/applications/queue?needs_eligibility_review=true', undefined, ino);
+console.log(`  Phase 4 queue filter ?needs_eligibility_review=true contains B: ${q.applications.some((a) => a.id === state.B.applicationId)}`);
+const v = await call('POST', `/applications/${state.B.applicationId}/verify`, {}, ino, { raw: true });
+console.log(`  Phase 4 /verify without confirming review: HTTP ${v.status} ${JSON.stringify(v.body.details)}`);
