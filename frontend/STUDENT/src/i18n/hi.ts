@@ -83,7 +83,7 @@ export const hi: Record<MessageKey, string> = {
 
   "schemes.eyebrow": "छात्रवृत्ति योजनाएँ",
   "schemes.title": "आवेदन के लिए खुली योजनाएँ",
-  "schemes.description": "सक्रिय योजना संस्करण, जैसे VIDYASETU बैकएंड उन्हें सूचीबद्ध करता है। पोर्टल उपयोग करते समय सूची हर 30 सेकंड में ताज़ा होती है।",
+  "schemes.description": "सक्रिय योजना संस्करण, जैसे VIDYASETU बैकएंड उन्हें सूचीबद्ध करता है। सूची 30 सेकंड से पुरानी होने पर यह पेज या होम पेज खोलते ही वह फिर से लोड होती है; अभी लोड करने के लिए रीफ़्रेश दबाएँ।",
   "schemes.version": "संस्करण {n}",
   "schemes.fromTo": "{from} से {to} तक",
   "schemes.fromOpen": "{from} से · कोई अंतिम तिथि नहीं",

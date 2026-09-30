@@ -53,7 +53,7 @@ without a key is shown humanised (underscores to spaces, sentence case), e.g.
 |---|---|---|
 | `schemes.eyebrow` | Scholarship schemes | छात्रवृत्ति योजनाएँ |
 | `schemes.title` | Schemes open for applications | आवेदन के लिए खुली योजनाएँ |
-| `schemes.description` | Active scheme versions, as the VIDYASETU backend lists them. The list is refreshed every 30 seconds while you use the portal. | सक्रिय योजना संस्करण, जैसे VIDYASETU बैकएंड उन्हें सूचीबद्ध करता है। पोर्टल उपयोग करते समय सूची हर 30 सेकंड में ताज़ा होती है। |
+| `schemes.description` | Active scheme versions, as the VIDYASETU backend lists them. Opening this page or the home page reloads the list when it is more than 30 seconds old; use Refresh to reload it now. | सक्रिय योजना संस्करण, जैसे VIDYASETU बैकएंड उन्हें सूचीबद्ध करता है। सूची 30 सेकंड से पुरानी होने पर यह पेज या होम पेज खोलते ही वह फिर से लोड होती है; अभी लोड करने के लिए रीफ़्रेश दबाएँ। |
 | `schemes.version` | Version {n} | संस्करण {n} |
 | `schemes.fromTo` | From {from} to {to} | {from} से {to} तक |
 | `schemes.fromOpen` | From {from} · no end date | {from} से · कोई अंतिम तिथि नहीं |

@@ -87,7 +87,7 @@ export const en = {
   // landing eligibility checker
   "schemes.eyebrow": "Scholarship schemes",
   "schemes.title": "Schemes open for applications",
-  "schemes.description": "Active scheme versions, as the VIDYASETU backend lists them. The list is refreshed every 30 seconds while you use the portal.",
+  "schemes.description": "Active scheme versions, as the VIDYASETU backend lists them. Opening this page or the home page reloads the list when it is more than 30 seconds old; use Refresh to reload it now.",
   "schemes.version": "Version {n}",
   "schemes.fromTo": "From {from} to {to}",
   "schemes.fromOpen": "From {from} · no end date",
