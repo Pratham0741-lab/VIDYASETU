@@ -101,10 +101,15 @@ export class ApplicationsService {
    * (SUBMITTED) and the automatic eligibility gate runs in this same
    * transaction, so it lands in INO_VERIFIED or DEFECTIVE before the
    * response is sent.
+   *
+   * awaitDocuments (the student portal's draft submit): the gate is not run
+   * yet. The application waits in SUBMITTED - in no officer's queue - until
+   * its documents are in, and DocumentsService.complete runs the gate then.
    */
   async create(
     actor: Actor,
     dto: CreateApplicationDto,
+    awaitDocuments = false,
   ): Promise<ApplicationView & { eligibility_gate: EligibilityGateResult | null }> {
     const client = this.db.client;
     const applicant = await client.applicant.findUnique({
@@ -156,7 +161,7 @@ export class ApplicationsService {
       select: { id: true },
     });
 
-    const gate = await this.workflow.runAutomatic(created.id, dto.declared);
+    const gate = awaitDocuments ? null : await this.workflow.runAutomatic(created.id, dto.declared);
     return { ...(await this.get(created.id)), eligibility_gate: gate };
   }
 

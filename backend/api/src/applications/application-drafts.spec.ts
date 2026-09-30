@@ -64,18 +64,28 @@ describe('application drafts (Phase 14 loose ends, Part C)', () => {
   it('submit: the unchanged create path with the draft fields, then the draft is frozen', async () => {
     const { service, client, create } = setup({});
     await service.submit(actor, 'd1');
-    expect(create).toHaveBeenCalledWith(actor, {
-      scheme_version_id: VERSION,
-      academic_year: '2026-27',
-      institution_code: 'U-0001',
-      course_year: 2,
-      declared: { education_level: 'UG' },
-    });
+    expect(create).toHaveBeenCalledWith(
+      actor,
+      {
+        scheme_version_id: VERSION,
+        academic_year: '2026-27',
+        institution_code: 'U-0001',
+        course_year: 2,
+        declared: { education_level: 'UG' },
+      },
+      false,
+    );
     expect(client.applicationDraft.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: 'SUBMITTED', submitted_application_id: 'app-9' }),
       }),
     );
+  });
+
+  it('submit awaiting documents: the gate is left for when the documents are in', async () => {
+    const { service, create } = setup({});
+    await service.submit(actor, 'd1', true);
+    expect(create).toHaveBeenCalledWith(actor, expect.anything(), true);
   });
 
   it('an incomplete draft cannot be submitted; a submitted one cannot change', async () => {

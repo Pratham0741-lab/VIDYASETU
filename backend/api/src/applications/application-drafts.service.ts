@@ -167,8 +167,12 @@ export class ApplicationDraftsService {
     return updated;
   }
 
-  /** The unchanged submit path, then the draft is frozen with the application it became. */
-  async submit(actor: Actor, id: string) {
+  /**
+   * The unchanged submit path, then the draft is frozen with the application it became.
+   * awaitDocuments: the gate waits for the documents (ApplicationsService.create); the
+   * frozen draft keeps the declared answers it will then evaluate.
+   */
+  async submit(actor: Actor, id: string, awaitDocuments = false) {
     const d = await this.get(id);
     this.refuseSubmitted(d);
     const missing = (['scheme_version_id', 'academic_year'] as const).filter((k) => d[k] === null);
@@ -190,7 +194,7 @@ export class ApplicationDraftsService {
       ...(d.is_hosteller !== null ? { is_hosteller: d.is_hosteller } : {}),
       declared: d.declared as Record<string, unknown>,
     };
-    const application = await this.applications.create(actor, dto);
+    const application = await this.applications.create(actor, dto, awaitDocuments);
     const now = new Date();
     await this.db.client.applicationDraft.update({
       where: { id: d.id },

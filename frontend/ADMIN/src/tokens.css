@@ -1,0 +1,37 @@
+/*
+ * Type tokens for the officer portal. Font stack and token names follow the
+ * student portal (frontend/STUDENT/src/tokens.css, "UI v2: shell and type
+ * scale") so both portals match. The officer portal is denser, so its scale
+ * is 12/13/14/16/20/24/32 and weights are 400/500/600 only.
+ * Every font-size in src/index.css uses one of these variables.
+ */
+:root {
+  --fs-xs: 0.75rem; /* 12px: uppercase labels, badges, captions (minimum) */
+  --fs-caption: 0.8125rem; /* 13px: table cells, buttons, secondary text */
+  --fs-sm: 0.875rem; /* 14px: UI body text */
+  --fs-body: 1rem; /* 16px: form inputs, emphasised body */
+  --fs-title-lg: 1.25rem; /* 20px: card and section titles */
+  --fs-section: 1.5rem; /* 24px: large figures, page sub-headings */
+  --fs-h1: 2rem; /* 32px: page titles */
+  --fs-input: var(--fs-body); /* inputs stay 16px (no zoom on mobile) */
+  --lh-body: 1.4;
+  --lh-heading: 1.25;
+  --font-body: 'Noto Sans', system-ui, sans-serif;
+  --font-heading: 'Nunito', 'Noto Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+/* Hindi: +1px and more line height so matras are not clipped; Devanagari
+   first in the stack (as in the student portal). */
+:root:lang(hi) {
+  --fs-xs: calc(0.75rem + 1px);
+  --fs-caption: calc(0.8125rem + 1px);
+  --fs-sm: calc(0.875rem + 1px);
+  --fs-body: calc(1rem + 1px);
+  --fs-title-lg: calc(1.25rem + 1px);
+  --fs-section: calc(1.5rem + 1px);
+  --fs-h1: calc(2rem + 1px);
+  --lh-body: 1.6;
+  --lh-heading: 1.5;
+  --font-body: 'Noto Sans Devanagari', 'Noto Sans', system-ui, sans-serif;
+  --font-heading: 'Noto Sans Devanagari', 'Nunito', system-ui, sans-serif;
+}

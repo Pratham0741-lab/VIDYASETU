@@ -26,6 +26,18 @@ export interface FormSchema {
   unparseable_rules: Array<{ rule_id: string; error: ReturnType<RuleError['toJSON']> }>;
 }
 
+/**
+ * Checklist items that are not documents to upload. The Aadhaar number is
+ * established by Aadhaar authentication (integrations/aadhaar), never by an
+ * uploaded card, so it is left out of every derived checklist - including
+ * frozen scheme versions, whose stored config cannot change.
+ */
+const NOT_AN_UPLOAD = /^aadha?ar (number|card)\b/i;
+
+export function isUploadSlot(slot: string): boolean {
+  return !NOT_AN_UPLOAD.test(slot.trim());
+}
+
 function paramValue(params: Record<string, unknown>, paramPath: string): unknown {
   let current: unknown = params;
   for (const segment of paramPath.split('.').slice(1)) {
@@ -42,13 +54,15 @@ function paramValue(params: Record<string, unknown>, paramPath: string): unknown
  * so a newly authored scheme gets a correct form with no code changes.
  */
 export function deriveFormSchema(config: unknown): FormSchema {
-  const { rules, required_documents } = readSchemeConfig(config);
+  const { rules, required_documents: listed } = readSchemeConfig(config);
+  const required_documents = listed.filter(isUploadSlot);
   const fields = new Map<string, FormField>();
   const docRefs = new Map<string, Set<string>>();
   const unparseable: FormSchema['unparseable_rules'] = [];
 
   for (const rule of rules) {
     for (const ref of rule.doc_refs) {
+      if (!isUploadSlot(ref)) continue;
       if (!docRefs.has(ref)) docRefs.set(ref, new Set());
       docRefs.get(ref)!.add(rule.id);
     }

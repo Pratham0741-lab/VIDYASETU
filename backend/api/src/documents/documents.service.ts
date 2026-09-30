@@ -27,8 +27,10 @@ import {
 import { DigiLockerAdapter } from '../integrations/digilocker/digilocker.adapter';
 import { SystemActor } from '../workflow/system-actor';
 import { DeficienciesService } from '../deficiencies/deficiencies.service';
-import { canonicalTypeForSlot } from './document-types';
+import { canonicalTypeForSlot, isOptionalSlot } from './document-types';
+import { officerAccepted, readiness, SlotResult, slotResult } from './document-readiness';
 import { compareWithEligibility } from './eligibility-cross-check';
+import { WorkflowService } from '../workflow/workflow.service';
 import type { Readable } from 'node:stream';
 import { portalMessage } from '../common/i18n/portal-messages';
 
@@ -122,6 +124,7 @@ export class DocumentsService {
     private readonly digilocker: DigiLockerAdapter,
     private readonly systemActor: SystemActor,
     private readonly deficiencies: DeficienciesService,
+    private readonly workflow: WorkflowService,
   ) {}
 
   private get mockMode(): boolean {
@@ -450,8 +453,8 @@ export class DocumentsService {
     };
   }
 
-  async list(applicationId: string) {
-    const app = await this.loadApplication(applicationId);
+  /** Every document of the application, each slot's latest one with its result, and readiness. */
+  private async documentState(app: Awaited<ReturnType<DocumentsService['loadApplication']>>) {
     const checklist = this.checklistFor(app.scheme_version.config);
     const rows = await this.db.client.document.findMany({
       where: { application_id: app.id },
@@ -459,8 +462,41 @@ export class DocumentsService {
       orderBy: [{ created_at: 'asc' }, { id: 'asc' }],
     });
     const views = rows.map((r) => this.view(r));
+    const accepted = officerAccepted(app.current_stage);
+    const results: Record<string, SlotResult> = {};
+    const processedAt: Record<string, string | null> = {};
+    const slots = checklist.map((slot) => {
+      const ofSlot = views.filter((v) => v.document_type === slot);
+      const latest = ofSlot.at(-1);
+      results[slot] = slotResult(slot, latest ?? null, accepted);
+      // As the pipeline's consistency step counts it: the slot's latest completed extraction.
+      const done = ofSlot.filter((v) => v.extraction?.status === 'COMPLETED');
+      processedAt[slot] = done.at(-1)?.extraction?.processed_at ?? null;
+      return {
+        slot,
+        optional: isOptionalSlot(slot),
+        document_id: latest?.document_id ?? null,
+        state: latest?.state ?? 'MISSING',
+        outcome: results[slot].outcome,
+        reasons: results[slot].reasons,
+      };
+    });
+    const ready = readiness(
+      checklist,
+      results,
+      processedAt,
+      { status: app.document_consistency_status, checked_at: app.document_consistency_checked_at },
+      new Date(),
+    );
+    return { checklist, views, slots, readiness: ready };
+  }
+
+  async list(applicationId: string) {
+    const app = await this.loadApplication(applicationId);
+    const { checklist, views, slots, readiness: ready } = await this.documentState(app);
     return {
       application_id: app.id,
+      current_stage: app.current_stage,
       ml_mode: this.config.ml.mode,
       ...(this.mockMode ? { mock_notice: MOCK_NOTICE } : {}),
       flags: {
@@ -470,16 +506,103 @@ export class DocumentsService {
         document_consistency_checked_at: app.document_consistency_checked_at,
       },
       checklist,
-      slots: checklist.map((slot) => {
-        const latest = [...views].reverse().find((v) => v.document_type === slot);
-        return {
-          slot,
-          document_id: latest?.document_id ?? null,
-          state: latest?.state ?? 'MISSING',
-        };
-      }),
+      slots,
+      readiness: ready,
       documents: views,
     };
+  }
+
+  /**
+   * The applicant's "documents are in" step, called by the portal after each
+   * scan settles; idempotent. An application submitted to await its
+   * documents (SUBMITTED) moves on once nothing is left to upload or scan:
+   * the workflow's own automatic eligibility gate runs, as the applicant,
+   * exactly as on a normal submission. All documents verified: the gate's
+   * usual route (INO_VERIFIED, the institute queue). Any document needing
+   * attention: the gate's manual-review route (INO_VERIFIED with
+   * needs_eligibility_review) - an officer checks it before it can go on.
+   * The gate's evaluation did not exist when the documents were scanned, so
+   * the eligibility cross-check the pipeline skipped is run here, after it.
+   * Any other stage: nothing to do (the stage and readiness are returned).
+   */
+  async complete(applicationId: string) {
+    const app = await this.loadApplication(applicationId);
+    const state = await this.documentState(app);
+    if (app.current_stage !== 'SUBMITTED' || !state.readiness.ready) {
+      return {
+        application_id: app.id,
+        advanced: false,
+        current_stage: app.current_stage,
+        readiness: state.readiness,
+        eligibility_gate: null,
+      };
+    }
+
+    // The declared answers the applicant submitted: kept on the frozen draft (owner-only).
+    const draft = await this.db.client.applicationDraft.findFirst({
+      where: { submitted_application_id: app.id },
+      select: { declared: true },
+    });
+    const review = [...state.readiness.attention_slots];
+    if (!state.readiness.verified && review.length === 0) review.push('document_consistency');
+    const gate = await this.workflow.runAutomatic(app.id, draft?.declared ?? {}, review);
+    if (gate && gate.routed_to !== 'DEFECTIVE') {
+      await this.crossCheckAfterGate(app, gate.routed_to, state.views);
+    }
+
+    const after = await this.loadApplication(app.id);
+    return {
+      application_id: app.id,
+      advanced: gate !== null,
+      current_stage: after.current_stage,
+      needs_eligibility_review: after.needs_eligibility_review,
+      readiness: (await this.documentState(after)).readiness,
+      eligibility_gate: gate,
+    };
+  }
+
+  /**
+   * Phase 7's eligibility cross-check (compareWithEligibility, unchanged) for
+   * each slot's latest completed extraction, against the evaluation the gate
+   * has just recorded; written as the pipeline would (SYSTEM actor).
+   */
+  private async crossCheckAfterGate(
+    app: Awaited<ReturnType<DocumentsService['loadApplication']>>,
+    stage: string,
+    views: ReturnType<DocumentsService['view']>[],
+  ) {
+    const latest = new Map<string, ReturnType<DocumentsService['view']>>();
+    for (const v of views) if (v.extraction?.status === 'COMPLETED') latest.set(v.document_type, v);
+    for (const v of latest.values()) {
+      const ext = v.extraction;
+      const extracted = Object.fromEntries(ext.fields.map((f) => [f.name, f.value]));
+      const confidence = Object.fromEntries(ext.fields.map((f) => [f.name, f.confidence ?? 0]));
+      const mismatches = await compareWithEligibility(
+        this.db.client,
+        { applicationId: app.id, applicantId: app.applicant_id },
+        extracted,
+        confidence,
+        this.config.documents.valueTolerance,
+      );
+      if (mismatches.length === 0) continue;
+      await this.systemActor.run(async () => {
+        // Raw SQL: the Prisma jurisdiction extension would scope this update by the
+        // requesting applicant, whose applications RLS hides from the SYSTEM actor.
+        await this.db.client.$executeRaw`UPDATE "document_extractions"
+          SET "eligibility_mismatches" = ${JSON.stringify(mismatches)}::jsonb
+          WHERE "id" = ${ext.id}::uuid`;
+        await this.db.client.$queryRaw`SELECT document_system_flag_application(
+          ${app.id}::uuid, true, ${null}::text, ${null}::jsonb, ${null}::timestamptz) AS updated`;
+      });
+      this.events.record(DOMAIN_EVENTS.DOCUMENT_ELIGIBILITY_MISMATCH, {
+        ...applicationRef(app),
+        current_stage: stage,
+        document_id: v.document_id,
+        extraction_id: ext.id,
+        fields: mismatches,
+        occurred_at: new Date().toISOString(),
+      });
+    }
   }
 
   async get(documentId: string) {

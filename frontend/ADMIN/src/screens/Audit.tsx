@@ -114,7 +114,7 @@ function DenialsTable() {
     {!rows && runner.busy ? <Loading /> : <table>
       <thead><tr><th>{t("audit.colTime")}</th><th>{t("audit.colAction")}</th><th>{t("audit.colActor")}</th><th>{t("audit.colSubject")}</th><th>{t("audit.colReason")}</th><th>{t("audit.colJurisdiction")}</th><th>{t("audit.colFingerprint")}</th></tr></thead>
       <tbody>{(rows ?? []).map((d, k) => <tr key={d.id}>
-        <td className="mono">{i18n.formatDate(d.occurred_at, true)}</td>
+        <td className="num">{i18n.formatDate(d.occurred_at, true)}</td>
         <td><span className="event-type">{d.action_attempted}</span></td>
         <td><div className="actor-cell"><span className="actor-dot">{(d.actor_role ?? "–").slice(0, 2)}</span>{d.actor_role ? i18n.tk(`role.${d.actor_role}`, d.actor_role) : "–"}</div></td>
         <td>{d.subject_type ?? "–"}{d.subject_id ? ` · ${shortId(d.subject_id)}` : ""}</td>
@@ -142,7 +142,7 @@ function AccessTable() {
     {!rows && runner.busy ? <Loading /> : <table>
       <thead><tr><th>{t("audit.colTime")}</th><th>{t("audit.colKind")}</th><th>{t("audit.colResource")}</th><th>{t("scrutiny.colApp")}</th><th>{t("audit.colDocument")}</th><th>{t("audit.colActor")}</th><th>{t("audit.colJurisdiction")}</th></tr></thead>
       <tbody>{(rows ?? []).map((a) => <tr key={a.id}>
-        <td className="mono">{i18n.formatDate(a.accessed_at, true)}</td>
+        <td className="num">{i18n.formatDate(a.accessed_at, true)}</td>
         <td><span className="event-type">{i18n.tk(`accessKind.${a.access_kind}`, a.access_kind)}</span></td>
         <td>{a.resource_type}</td>
         <td className="mono">{shortId(a.application_id) || "–"}</td>

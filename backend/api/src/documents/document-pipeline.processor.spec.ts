@@ -15,15 +15,15 @@ const job: PipelineJob = {
   jurisdictionDistrict: 'Ranchi',
   currentStage: 'INO_VERIFIED',
   schemeVersionId: 'version-1',
-  slot: 'Aadhar Number',
+  slot: 'Domicile certificate',
   bucket: 'documents',
   storageKey: 'k',
   requestId: 'req-1',
 };
 
 /**
- * The exact ML_MODE=real response for a generic identity document (slot
- * "Aadhar Number", no canonical type): the classifier guessed
+ * A recorded ML_MODE=real response for a generic identity document, here in
+ * a slot with no canonical type ("Domicile certificate"): the classifier guessed
  * CASTE_CERTIFICATE at 0.12, so the caste extractor ran and returned every
  * field of that type - category null at confidence 0.
  */

@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type React
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError } from "../api/client";
 import * as ep from "../api/endpoints";
-import type { ApplicationDocuments, CreatedApplication, DocumentView, Draft, FormField } from "../api/responses";
+import type { ApplicationDocuments, AttentionReason, CreatedApplication, DocumentsComplete, Draft, FormField, SlotOutcome } from "../api/responses";
 import type { CreateApplicationDto } from "../api/types";
 import { useMyApplications } from "../applications";
 import { useAuth } from "../auth/AuthProvider";
@@ -107,16 +107,16 @@ function WizardSteps({ active }: { active: number }) {
   );
 }
 
-function UploadRow({ title, file, issue, tag, action }: { title: string; file?: string; issue?: string; tag?: { tone: Tone; text: string }; action: ReactNode }) {
-  const { t } = useI18n();
+/** One checklist row: the round icon, one status, the reason when it needs attention, one file action. */
+function UploadRow({ title, file, issues, tag, action }: { title: string; file?: string; issues: string[]; tag: { tone: Tone; text: string }; action: ReactNode }) {
   return (
-    <li className={`upload-row ${issue ? "has-issue" : ""}`}>
+    <li className={`upload-row ${issues.length ? "has-issue" : ""}`}>
       <span className="upload-icon"><Icon name={file ? "document" : "upload"} /></span>
       <div className="upload-copy">
         <strong>{title}</strong>
-        <span className="upload-file num">{file || t("apply.fileHint")}</span>
-        {tag && <Tag tone={tag.tone}>{tag.text}</Tag>}
-        {issue && <p className="upload-issue"><Icon name="warning" />{issue}</p>}
+        {file && <span className="upload-file num">{file}</span>}
+        <Tag tone={tag.tone}>{tag.text}</Tag>
+        {issues.map((issue) => <p className="upload-issue" key={issue}><Icon name="warning" />{issue}</p>)}
       </div>
       <div className="upload-action">{action}</div>
     </li>
@@ -213,13 +213,11 @@ export default function ApplicationScreen() {
     setBusy(true);
     setError(null);
     try {
-      let created: CreatedApplication;
-      if (draft) {
-        await ep.updateDraft(draft.id, toDto(form, scheme));
-        created = (await ep.submitDraft(draft.id)).application;
-      } else {
-        created = await ep.createApplication(toDto(form, scheme));
-      }
+      // Always through a draft: it keeps the declared answers, and the application waits in
+      // SUBMITTED (no officer queue) until its documents are uploaded and scanned.
+      const dto = toDto(form, scheme);
+      const d = draft ? await ep.updateDraft(draft.id, dto) : await ep.createDraft(dto);
+      const created: CreatedApplication = (await ep.submitDraft(d.id, true)).application;
       setGate(created.eligibility_gate);
       setDraft(null);
       await reloadApps();
@@ -364,75 +362,92 @@ export default function ApplicationScreen() {
   );
 }
 
-function stateTag(state: string, t: ReturnType<typeof useI18n>["t"]): { tone: Tone; text: string } {
-  switch (state) {
-    case "MISSING": return { tone: "gray", text: t("doc.state.MISSING") };
-    case "PROCESSING": return { tone: "blue", text: t("doc.state.PROCESSING") };
-    case "QUALITY_REJECTED": return { tone: "amber", text: t("doc.state.QUALITY_REJECTED") };
-    case "FAILED": return { tone: "red", text: t("doc.state.FAILED") };
-    case "NEEDS_REVIEW": return { tone: "blue", text: t("doc.state.NEEDS_REVIEW") };
-    default: return { tone: "green", text: t("doc.state.DONE") };
-  }
-}
+const OUTCOME_TONE: Record<SlotOutcome, Tone> = { MISSING: "gray", SCANNING: "blue", VERIFIED: "green", NEEDS_ATTENTION: "amber" };
 
 function DocumentsStep({ applicationId, stage, gate }: { applicationId: string; stage: string; gate: CreatedApplication["eligibility_gate"] }) {
   const i18n = useI18n();
   const { t, tk } = i18n;
   const navigate = useNavigate();
   const [docs, setDocs] = useState<ApplicationDocuments | null>(null);
-  const [live, setLive] = useState<Record<string, DocumentView>>({});
-  const [retake, setRetake] = useState<Record<string, string[]>>({});
+  const [moved, setMoved] = useState<DocumentsComplete | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [status, setStatus] = useState("");
   const inputs = useRef<Record<string, HTMLInputElement | null>>({});
-  const closed = stage === "REJECTED" || stage === "DISBURSED";
+  const current = docs?.current_stage ?? stage;
+  const closed = current === "REJECTED" || current === "DISBURSED";
 
-  const load = useCallback(async () => {
+  const fields = (names: string[]) => [...new Set(names.map((f) => tk(`docField.${f}`, f.replace(/_/g, " "))))].join(", ");
+  const reasonText = (r: AttentionReason): string => {
+    switch (r.code) {
+      case "quality": return t("apply.retake", { issues: r.issues.map((x) => tk(`quality.${x}`, x.replace(/_/g, " "))).join(", ") || t("quality.unknown") });
+      case "unreadable": return t("apply.unreadable");
+      case "wrong_type": return t("doc.reason.wrong_type", { type: r.detected ? tk(`docType.${r.detected}`, r.detected) : "?" });
+      case "type_uncertain": return t("doc.reason.type_uncertain");
+      case "manual_check": return t("doc.reason.manual_check");
+      case "low_confidence": return t("doc.reason.low_confidence", { fields: fields(r.fields) });
+      case "profile_mismatch": return t("doc.reason.profile_mismatch", { fields: fields(r.fields) });
+    }
+  };
+
+  // Load; an application still waiting for its documents moves on as soon as they are all in
+  // (also when the applicant comes back later). The cross-document check can trail the last scan.
+  const completing = useRef(false);
+  const load = useCallback(async (): Promise<ApplicationDocuments | null> => {
     try {
-      setDocs(await ep.listDocuments(applicationId));
+      for (let i = 0; i < POLL_TRIES; i++) {
+        const d = await ep.listDocuments(applicationId);
+        setDocs(d);
+        if (d.current_stage !== "SUBMITTED" || d.readiness.pending_slots.length > 0) return d;
+        if (d.readiness.ready) {
+          if (completing.current) return d; // another finished scan is already moving it on
+          completing.current = true;
+          try {
+            const c = await ep.completeDocuments(applicationId);
+            if (!c.advanced) return d;
+            setMoved(c);
+            const after = await ep.listDocuments(applicationId);
+            setDocs(after);
+            return after;
+          } finally {
+            completing.current = false;
+          }
+        }
+        await new Promise((r) => setTimeout(r, POLL_MS));
+      }
     } catch (e) {
       setError(e);
     }
+    return null;
   }, [applicationId]);
   useEffect(() => {
     load();
   }, [load]);
 
-  const poll = async (documentId: string) => {
+  const waitForScan = async (documentId: string, slot: string) => {
     for (let i = 0; i < POLL_TRIES; i++) {
       await new Promise((r) => setTimeout(r, POLL_MS));
       try {
-        const d = await ep.getDocument(documentId);
-        setLive((m) => ({ ...m, [documentId]: d }));
-        if (d.state !== "PROCESSING") {
-          setStatus(t("apply.statusLive", { doc: tk(`slot.${d.document_type}`, d.document_type), status: stateTag(d.state, t).text }));
-          break;
-        }
+        if ((await ep.getDocument(documentId)).state !== "PROCESSING") break;
       } catch {
         break;
       }
     }
-    await load();
+    const outcome = (await load())?.slots.find((s) => s.slot === slot)?.outcome;
+    if (outcome) setStatus(t("apply.statusLive", { doc: tk(`slot.${slot}`, slot), status: t(`doc.outcome.${outcome}`) }));
   };
 
+  // Scanned automatically: upload, then OCR and checks run on the server; the row follows them.
   const onFile = async (slot: string, file: File | undefined) => {
     setError(null);
     if (!file) return;
     // Size and type are checked by the backend (10 MiB; PDF, JPG, PNG); its 413 / 415 message is shown as returned.
     setUploading(slot);
-    setStatus(t("apply.statusLive", { doc: tk(`slot.${slot}`, slot), status: t("apply.uploading") }));
+    setStatus(t("apply.statusLive", { doc: tk(`slot.${slot}`, slot), status: t("doc.outcome.SCANNING") }));
     try {
       const res = await ep.uploadDocument(applicationId, slot, file);
-      if (res.status === "QUALITY_REJECTED") {
-        setRetake((m) => ({ ...m, [slot]: res.quality.issues }));
-        setStatus(t("apply.statusLive", { doc: tk(`slot.${slot}`, slot), status: issueText(res.quality.issues) }));
-      }
-      else {
-        setRetake((m) => ({ ...m, [slot]: [] }));
-        await load();
-        await poll(res.document_id);
-      }
+      await load();
+      if (res.status === "PROCESSING") void waitForScan(res.document_id, slot);
     } catch (e) {
       setStatus("");
       setError(e);
@@ -443,39 +458,41 @@ function DocumentsStep({ applicationId, stage, gate }: { applicationId: string; 
     }
   };
 
-  const issueText = (issues: string[]) => t("apply.retake", { issues: issues.map((x) => tk(`quality.${x}`, x.replace(/_/g, " "))).join(", ") || t("quality.unknown") });
+  const routed = moved?.eligibility_gate ?? gate;
+  const disagree = docs?.readiness.consistency === "INCONSISTENT" || docs?.readiness.consistency === "UNCERTAIN";
 
   return (
     <>
       <div className="card-heading"><div><h2>{t("apply.docsTitle")}</h2><p>{t("apply.docsText")}</p></div></div>
-      {gate && (gate.routed_to === "DEFECTIVE" ? (
-        <div className="alert-danger"><Icon name="warning" /><div><strong>{t("apply.gateRefused")}</strong><p>{gate.failed_rules.map((r) => (r.message_key ? tk(`rule.${r.message_key}`, r.explanation, { income: "", limit: "" }) : r.explanation)).join(" ")}</p></div></div>
+      {current === "SUBMITTED" && !routed && <InfoNote icon="clock" title={t("apply.awaitingTitle")} text={t("apply.awaitingText")} />}
+      {routed && (routed.routed_to === "DEFECTIVE" ? (
+        <div className="alert-danger"><Icon name="warning" /><div><strong>{t("apply.gateRefused")}</strong><p>{routed.failed_rules.map((r) => (r.message_key ? tk(`rule.${r.message_key}`, r.explanation, { income: "", limit: "" }) : r.explanation)).join(" ")}</p></div></div>
       ) : (
-        <InfoNote icon="check" title={t("apply.submittedTitle")} text={gate.needs_eligibility_review ? t("apply.submittedReview") : t("apply.submittedText")} />
+        <InfoNote icon="check" title={t("apply.submittedTitle")} text={!routed.needs_eligibility_review ? t("apply.submittedText") : routed.outcome === "INDETERMINATE" ? t("apply.submittedReview") : t("apply.submittedDocsReview")} />
       ))}
       <div className="quality-banner"><Icon name="shield" /><div><strong>{t("apply.qualityTitle")}</strong><p>{docs?.mock_notice ? t("apply.qualityMock") : t("apply.qualityText")}</p></div></div>
       {closed && <div className="alert-danger"><Icon name="warning" /><div><strong>{t("reason.application_closed")}</strong></div></div>}
+      {disagree && <div className="alert-danger"><Icon name="warning" /><div><strong>{t("apply.consistencyIssue")}</strong></div></div>}
       <ErrorNote error={error} />
       <p className="sr-only" aria-live="polite">{status}</p>
       {!docs && !error && <p>{t("common.loading")}</p>}
       {docs && docs.slots.length === 0 && <p>{t("common.empty")}</p>}
+      {docs && docs.slots.length > 0 && <p className="hint">{t("apply.fileHint")}</p>}
       <ul className="upload-list">
-        {docs?.slots.map(({ slot, document_id, state }) => {
-          const view = (document_id && live[document_id]) || docs.documents.find((d) => d.document_id === document_id);
-          const current = view?.state ?? state;
-          const rejected = retake[slot]?.length ? retake[slot] : current === "QUALITY_REJECTED" ? (view?.quality?.issues ?? []) : null;
-          const issue = rejected ? issueText(rejected) : current === "FAILED" ? t("apply.unreadable") : undefined;
+        {docs?.slots.map(({ slot, document_id, outcome, reasons }) => {
+          const view = docs.documents.find((d) => d.document_id === document_id);
+          const shown: SlotOutcome = uploading === slot ? "SCANNING" : outcome;
           return (
             <UploadRow
               key={slot}
               title={tk(`slot.${slot}`, slot)}
               file={view ? `${view.file_name} · ${sizeText(view.file_size_bytes)}` : undefined}
-              issue={issue}
-              tag={uploading === slot ? { tone: "blue", text: t("apply.uploading") } : stateTag(retake[slot]?.length ? "QUALITY_REJECTED" : current, t)}
+              issues={shown === "NEEDS_ATTENTION" ? reasons.map(reasonText) : []}
+              tag={{ tone: OUTCOME_TONE[shown], text: t(`doc.outcome.${shown}`) }}
               action={
                 <>
                   <input ref={(el) => { inputs.current[slot] = el; }} type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" hidden onChange={(e) => onFile(slot, e.target.files?.[0])} />
-                  <Button variant={view ? "ghost" : "blue"} icon={view ? undefined : "upload"} disabled={closed || uploading !== null} onClick={() => inputs.current[slot]?.click()}>{view ? t("apply.replace") : t("apply.chooseFile")}</Button>
+                  <Button variant={view ? "ghost" : "blue"} disabled={closed || uploading !== null} onClick={() => inputs.current[slot]?.click()}>{view ? t("apply.replace") : t("apply.chooseFile")}</Button>
                 </>
               }
             />

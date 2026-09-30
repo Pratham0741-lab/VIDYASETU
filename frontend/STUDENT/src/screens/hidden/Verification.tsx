@@ -14,7 +14,7 @@ export default function VerificationScreen() {
         <div className="check-table">{checks.map(([label, value, status, detail]) => <div className="check-row" key={label}><span className="rule-check"><Icon name="check" /></span><div><small>{label}</small><strong>{value}</strong></div><div><Tag tone="green">{status}</Tag><small>{detail}</small></div></div>)}</div>
         <div className="human-note"><Icon name="user" /><div><strong>What happens next?</strong><p>An assigned officer will review the original records. AI matching supports review; it never replaces the final human decision.</p></div></div>
       </Card>
-      <Card className="documents-card"><h3>Verified documents</h3>{["Aadhaar card", "ST certificate", "MA degree certificate"].map((doc, i) => <div className="doc-row" key={doc}><Icon name="document" /><div><strong>{doc}</strong><small>{i === 1 ? "Uploaded document" : "From DigiLocker"}</small></div><Icon name="check" /></div>)}<Button variant="secondary">View document details</Button></Card>
+      <Card className="documents-card"><h3>Verified documents</h3>{["Income certificate", "ST certificate", "MA degree certificate"].map((doc, i) => <div className="doc-row" key={doc}><Icon name="document" /><div><strong>{doc}</strong><small>{i === 1 ? "Uploaded document" : "From DigiLocker"}</small></div><Icon name="check" /></div>)}<Button variant="secondary">View document details</Button></Card>
     </div>
   </main>;
 }

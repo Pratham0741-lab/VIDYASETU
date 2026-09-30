@@ -8,25 +8,13 @@ importers:
 
   .:
     dependencies:
-      '@fontsource/dm-sans':
-        specifier: ^5.3.0
-        version: 5.3.0
-      '@fontsource/domine':
-        specifier: ^5.3.0
-        version: 5.3.0
-      '@fontsource/dongle':
-        specifier: ^5.3.0
-        version: 5.3.0
-      '@fontsource/doppio-one':
-        specifier: ^5.3.0
-        version: 5.3.0
-      '@fontsource/faculty-glyphic':
-        specifier: ^5.3.0
-        version: 5.3.0
-      '@fontsource/fondamento':
-        specifier: ^5.3.0
-        version: 5.3.0
       '@fontsource/ibm-plex-mono':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@fontsource/noto-sans':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@fontsource/noto-sans-devanagari':
         specifier: ^5.3.0
         version: 5.3.0
       '@fontsource/nunito':
@@ -92,26 +80,14 @@ packages:
   '@emnapi/wasi-threads@1.2.0':
     resolution: {integrity: sha512-N10dEJNSsUx41Z6pZsXU8FjPjpBEplgH24sfkmITrBED1/U2Esum9F3lfLrMjKHHjmi557zQn7kR9R+XWXu5Rg==}
 
-  '@fontsource/dm-sans@5.3.0':
-    resolution: {integrity: sha512-lYJtMXXO28q1z+yz+z8XKd0s4hXaa9QdkETzkyD760sidCv5heI86weYA0sx0Nc4pAMAQTUuyf4gO44cYKKS9g==}
-
-  '@fontsource/domine@5.3.0':
-    resolution: {integrity: sha512-rzEcXp1qmmChcoah9FamFoFshGsxkCEHOQ4FQTzUpIWstRz5k/34Jdc6+z/NTzM5izm5UfD8TOd1Cqfgz4w3BA==}
-
-  '@fontsource/dongle@5.3.0':
-    resolution: {integrity: sha512-zKJA8ZHQGdHE1q5GM4R3tiZrfClHuSalvTNZNFQ8jHYqxZ0XVblE6my4OiuGl8oAxiB9B+mpqb1mpoDOUeFD0g==}
-
-  '@fontsource/doppio-one@5.3.0':
-    resolution: {integrity: sha512-sQDd8fg0mDqsEDNgdvmHLbbslKjSMtbtVx1bVJILzExh9J7IveqdYoo5txV/o7BskwIA0XRh7hyKy4CAcvNdsw==}
-
-  '@fontsource/faculty-glyphic@5.3.0':
-    resolution: {integrity: sha512-vF6UXjcLFw6gFzGVxw7XtuRyk7ymo9V7fjSXdFDwCE7yNf8JOCifuxZCPWtqBpDCiJYG8+3MqUwk0RysCwdjQQ==}
-
-  '@fontsource/fondamento@5.3.0':
-    resolution: {integrity: sha512-DSlW9TOh/hrOHHRX+lL1sbrfdpJJFdc17YdrhOphJzG3bHSheu6dOg8k4+sFyIP/eMrnnLwBkErKVYLAwyjiHQ==}
-
   '@fontsource/ibm-plex-mono@5.3.0':
     resolution: {integrity: sha512-eTgnZjZEGk1QtD3ZstF+Vclo2HLAni8YMy34/DxllwZvyz1lR/1RF/xTiAquOBO7MvqBx8D2Ig2WCPMVfdZu7Q==}
+
+  '@fontsource/noto-sans-devanagari@5.3.0':
+    resolution: {integrity: sha512-7khYmipS/5KAUUmrO1DKir8yL8XI00d0+ZE9BqbS8XF1jzObv6CpPOk3UeYxF+Pvi8bx9bBvprBCOcbx/eQWTQ==}
+
+  '@fontsource/noto-sans@5.3.0':
+    resolution: {integrity: sha512-fBCog2PY7DiVVTEEqtI/Qdinx/knobHYfoGpjFXdfBX5RoJaBp1Prw2G75p0OIsdlMZg3cLo0c+YbIUYOxnQJw==}
 
   '@fontsource/nunito@5.3.0':
     resolution: {integrity: sha512-vw9TaTQJ/zpEpKrsODuPmOvaVjXgdda6B+xXA4YqjrdeJ62MLgVoDerdRXFQHyBnSCt2yQ2nHKCHPP/Pv7Xq4Q==}
@@ -780,19 +756,11 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
-  '@fontsource/dm-sans@5.3.0': {}
-
-  '@fontsource/domine@5.3.0': {}
-
-  '@fontsource/dongle@5.3.0': {}
-
-  '@fontsource/doppio-one@5.3.0': {}
-
-  '@fontsource/faculty-glyphic@5.3.0': {}
-
-  '@fontsource/fondamento@5.3.0': {}
-
   '@fontsource/ibm-plex-mono@5.3.0': {}
+
+  '@fontsource/noto-sans-devanagari@5.3.0': {}
+
+  '@fontsource/noto-sans@5.3.0': {}
 
   '@fontsource/nunito@5.3.0': {}
 

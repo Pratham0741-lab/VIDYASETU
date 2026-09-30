@@ -157,6 +157,23 @@ export class DocumentsController {
     return this.documents.list(id);
   }
 
+  /**
+   * The applicant's "documents are in" step (idempotent; the portal calls it
+   * after each scan settles). An application submitted to await its
+   * documents leaves SUBMITTED through the automatic eligibility gate once
+   * nothing is left to upload or scan; returns readiness only, no field values.
+   */
+  @Post('applications/:id/documents/complete')
+  @Roles(AppRole.APPLICANT)
+  @HttpCode(200)
+  @ApiOperation({
+    summary:
+      'Move an application awaiting its documents on, once they are all uploaded and scanned.',
+  })
+  complete(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.documents.complete(id);
+  }
+
   @Get('documents/:id')
   @Roles(AppRole.APPLICANT, ...REVIEWER_ROLES)
   @LogDocumentAccess('VIEW', 'document')

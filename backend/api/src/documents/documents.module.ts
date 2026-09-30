@@ -8,11 +8,14 @@ import { DocumentsService } from './documents.service';
 import { SystemTransactionRunner } from '../database/system-transaction.runner';
 import { SystemActor } from '../workflow/system-actor';
 import { DeficienciesModule } from '../deficiencies/deficiencies.module';
+import { WorkflowModule } from '../workflow/workflow.module';
 
 @Module({
   imports: [
     // Phase 13C: the upload guard and RESUBMITTED marking for open deficiency items.
     DeficienciesModule,
+    // The deferred eligibility gate of POST /applications/:id/documents/complete.
+    WorkflowModule,
     // Memory storage (the service hashes, sniffs and stores the bytes itself).
     MulterModule.registerAsync({
       inject: [AppConfigService],

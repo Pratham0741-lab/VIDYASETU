@@ -4,7 +4,7 @@ import type { Actor } from '../auth/actor';
 import { CurrentActor, Roles } from '../auth/decorators';
 import { AppRole } from '../auth/roles';
 import { ApplicationDraftsService } from './application-drafts.service';
-import { SaveApplicationDraftDto } from './applications.dto';
+import { SaveApplicationDraftDto, SubmitDraftDto } from './applications.dto';
 
 /** Phase 14 loose ends (Part C): the applicant's own drafts; nobody else has a route. */
 @ApiTags('applications')
@@ -48,7 +48,11 @@ export class ApplicationDraftsController {
   @ApiOperation({
     summary: 'Submit a draft through the unchanged submit path (POST /applications).',
   })
-  submit(@CurrentActor() actor: Actor, @Param('id', new ParseUUIDPipe()) id: string) {
-    return this.drafts.submit(actor, id);
+  submit(
+    @CurrentActor() actor: Actor,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: SubmitDraftDto,
+  ) {
+    return this.drafts.submit(actor, id, dto?.await_documents === true);
   }
 }

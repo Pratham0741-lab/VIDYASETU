@@ -63,3 +63,14 @@ export class SaveApplicationDraftDto {
   @IsObject()
   declared?: Record<string, unknown>;
 }
+
+/** POST /application-drafts/:id/submit (body optional). */
+export class SubmitDraftDto {
+  /**
+   * true (the student portal): the application waits in SUBMITTED until its
+   * required documents are uploaded and scanned; the automatic eligibility
+   * gate runs then (POST /applications/:id/documents/complete). Default
+   * false: the gate runs now, as for POST /applications.
+   */
+  @ApiPropertyOptional({ default: false }) @IsOptional() @IsBoolean() await_documents?: boolean;
+}

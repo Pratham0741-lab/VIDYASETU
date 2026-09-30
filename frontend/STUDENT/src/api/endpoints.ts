@@ -24,6 +24,7 @@ import type {
   CreatedApplication,
   DeficiencyList,
   DocumentDetail,
+  DocumentsComplete,
   Draft,
   DraftSubmitResult,
   EligibilityCheck,
@@ -92,7 +93,9 @@ export const listDrafts = () => api.get<Draft[]>('/application-drafts');
 export const createDraft = (dto: SaveApplicationDraftDto) => api.post<Draft>('/application-drafts', dto);
 export const updateDraft = (id: string, dto: SaveApplicationDraftDto) =>
   api.patch<Draft>(`/application-drafts/${enc(id)}`, dto);
-export const submitDraft = (id: string) => api.post<DraftSubmitResult>(`/application-drafts/${enc(id)}/submit`);
+/** awaitDocuments: the application waits in SUBMITTED until its documents are uploaded and scanned. */
+export const submitDraft = (id: string, awaitDocuments = false) =>
+  api.post<DraftSubmitResult>(`/application-drafts/${enc(id)}/submit`, awaitDocuments ? { await_documents: true } : undefined);
 
 // ------------------------------------------------------------- documents
 export const uploadDocument = (applicationId: string, documentType: string, file: File) =>
@@ -100,6 +103,9 @@ export const uploadDocument = (applicationId: string, documentType: string, file
 export const listDocuments = (applicationId: string) =>
   api.get<ApplicationDocuments>(`/applications/${enc(applicationId)}/documents`);
 export const getDocument = (id: string) => api.get<DocumentDetail>(`/documents/${enc(id)}`);
+/** After each scan settles: moves an application awaiting its documents on once they are all in (idempotent). */
+export const completeDocuments = (applicationId: string) =>
+  api.post<DocumentsComplete>(`/applications/${enc(applicationId)}/documents/complete`);
 
 // ---------------------------------------------------------- deficiencies
 export const listDeficiencies = (applicationId: string) =>

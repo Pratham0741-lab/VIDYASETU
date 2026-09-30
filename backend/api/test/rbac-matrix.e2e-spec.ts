@@ -333,6 +333,21 @@ const ROUTES: Record<string, RouteSpec> = {
       AUDITOR: D,
     },
   },
+  'POST /api/v1/applications/:id/documents/complete': {
+    method: 'post',
+    path: `/api/v1/applications/${APP_ID}/documents/complete`,
+    okStatus: 200,
+    matrix: {
+      APPLICANT: A,
+      SUPER_ADMIN: D,
+      MINISTRY_OFFICER: D,
+      STATE_NODAL_OFFICER: D,
+      DISTRICT_NODAL_OFFICER: D,
+      INSTITUTE_NODAL_OFFICER: D,
+      COMMITTEE: D,
+      AUDITOR: D,
+    },
+  },
   'GET /api/v1/applications/:id/documents': {
     method: 'get',
     path: `/api/v1/applications/${APP_ID}/documents`,
@@ -2339,6 +2354,7 @@ describe('RBAC role-permission matrix (e2e)', () => {
       .useValue({
         upload: () => Promise.resolve({ status: 'PROCESSING', document_id: 'x' }),
         list: () => Promise.resolve({ documents: [] }),
+        complete: () => Promise.resolve({ advanced: false }),
         get: () => Promise.resolve({ document_id: 'x' }),
         confirm: () => Promise.resolve({ document_id: 'x' }),
         file: () =>

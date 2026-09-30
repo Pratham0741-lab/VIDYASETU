@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { deriveFormSchema } from '../schemes/form-schema';
+import { deriveFormSchema, isUploadSlot } from '../schemes/form-schema';
 import {
   canonicalTypeForSlot,
   CANONICAL_DOCUMENT_TYPES,
+  isOptionalSlot,
   SLOT_DOCUMENT_TYPE,
 } from './document-types';
 import { consistencyStatus, routeByConfidence } from './review-routing';
@@ -26,12 +27,23 @@ describe('checklist slot -> canonical document type', () => {
     expect(missing).toEqual([]);
   });
 
+  it('no checklist asks for an Aadhaar upload (identity is Aadhaar authentication)', () => {
+    const slots = SEED.flatMap((v) => deriveFormSchema(v.config).documents.checklist);
+    expect(slots.filter((s) => /aadha?ar (number|card)/i.test(s))).toEqual([]);
+    // The bank passbook slot that only mentions an Aadhaar-linked account stays.
+    expect(slots).toContain('Scanned copy of the bank passbook (Aadhaar linked)');
+    expect(isUploadSlot('Aadhar Number')).toBe(false);
+    expect(isUploadSlot('Aadhaar Number / Card')).toBe(false);
+    expect(isOptionalSlot('Disability certificate (if applicable)')).toBe(true);
+    expect(isOptionalSlot('Family Income Certificate')).toBe(false);
+  });
+
   it('maps only to canonical types (or explicit null)', () => {
     for (const t of Object.values(SLOT_DOCUMENT_TYPE)) {
       if (t !== null) expect(CANONICAL_DOCUMENT_TYPES).toContain(t);
     }
     expect(canonicalTypeForSlot('Family Income Certificate')).toBe('INCOME_CERTIFICATE');
-    expect(canonicalTypeForSlot('Aadhar Number')).toBeNull();
+    expect(canonicalTypeForSlot('Domicile certificate')).toBeNull();
     expect(canonicalTypeForSlot('constructor')).toBeNull();
     expect(canonicalTypeForSlot('never seen before')).toBeNull();
   });

@@ -62,8 +62,6 @@ export const SLOT_DOCUMENT_TYPE: Readonly<Record<string, CanonicalDocumentType |
   'Disability certificate (if applicable)': 'DISABILITY_CERT',
   'Divyangjan certificate (if applicable)': 'DISABILITY_CERT',
   // No unambiguous canonical type.
-  'Aadhaar Number / Card': null,
-  'Aadhar Number': null,
   'Domicile certificate': null,
   'Scanned copy of certificates, diploma, degree etc. in respect of all examinations passed': null,
   'Scanned copy of the passport size photograph': null,
@@ -76,6 +74,14 @@ export const SLOT_DOCUMENT_TYPE: Readonly<Record<string, CanonicalDocumentType |
   institution_verification: null,
   research_progress_report: null,
 };
+
+/**
+ * A slot the applicant may leave empty: the guidelines' "(if applicable)"
+ * items (the demo seed leaves these empty for the same reason).
+ */
+export function isOptionalSlot(slot: string): boolean {
+  return /\(if applicable\)/i.test(slot);
+}
 
 /** The canonical type for a slot, or null (unmapped or unknown slot). */
 export function canonicalTypeForSlot(slot: string): CanonicalDocumentType | null {

@@ -153,16 +153,24 @@ export class WorkflowService {
 
   /**
    * Runs the automatic step of the application's current state, if it has
-   * one. Called in the same transaction that entered that state.
+   * one. Called in the same transaction that entered that state, or - for an
+   * application submitted to await its documents - once they are all in
+   * (DocumentsService.complete).
+   *
+   * documentReview: checklist slots whose document needs attention. An
+   * ELIGIBLE outcome then takes the gate's manual-review route (the
+   * INDETERMINATE transition, needs_eligibility_review) instead of the
+   * plain one; INELIGIBLE is unaffected.
    */
   async runAutomatic(
     applicationId: string,
     declared: unknown,
+    documentReview: string[] = [],
   ): Promise<EligibilityGateResult | null> {
     const app = await this.load(applicationId);
     const state = isStage(app.current_stage) ? WORKFLOW.states[app.current_stage] : undefined;
     if (state?.automatic !== ELIGIBILITY_GATE) return null;
-    return this.eligibilityGate(app, declared);
+    return this.eligibilityGate(app, declared, documentReview);
   }
 
   /**
@@ -174,10 +182,13 @@ export class WorkflowService {
   private async eligibilityGate(
     app: WorkflowApplication,
     declared: unknown,
+    documentReview: string[],
   ): Promise<EligibilityGateResult> {
     const prepared = await this.eligibility.prepareApplicationEvaluation(app.id, declared);
     const { outcome } = prepared.evaluation;
-    const needsReview = outcome === 'INDETERMINATE';
+    const documentsNeedReview = outcome === 'ELIGIBLE' && documentReview.length > 0;
+    const needsReview = outcome === 'INDETERMINATE' || documentsNeedReview;
+    const transition = documentsNeedReview ? T.NEEDS_REVIEW : GATE_TRANSITION[outcome];
     const failed = prepared.evaluation.rules.filter((r) => r.verdict === 'FAIL');
     const errors = prepared.evaluation.rules.filter(
       (r) => r.verdict === 'ERROR' && (r.rule_type === 'eligibility' || r.rule_type === 'unknown'),
@@ -185,7 +196,7 @@ export class WorkflowService {
 
     return this.systemActor.run(async () => {
       const { runId, storage } = await this.eligibility.persistApplicationEvaluation(prepared);
-      const decision = this.decide(app, GATE_TRANSITION[outcome], SYSTEM, {});
+      const decision = this.decide(app, transition, SYSTEM, {});
       const enteredAt = new Date();
       const dueAt = stageDueAt(decision.to, enteredAt);
 
@@ -216,6 +227,7 @@ export class WorkflowService {
             failed_rules: failed.map((r) => ({ rule_id: r.rule_id, message_key: r.message_key })),
             error_rules: errors.map((r) => r.rule_id),
             needs_eligibility_review: needsReview,
+            ...(documentsNeedReview ? { document_review: documentReview } : {}),
             stage_due_at: dueAt?.toISOString() ?? null,
           },
         },

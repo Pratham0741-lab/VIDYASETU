@@ -220,13 +220,51 @@ export interface DocumentView {
 }
 /** GET /documents/{id} (polling): the list item plus the ML mode. */
 export type DocumentDetail = DocumentView & { ml_mode: string; mock_notice?: string };
+/** One row's result: scanned automatically on upload. */
+export type SlotOutcome = 'MISSING' | 'SCANNING' | 'VERIFIED' | 'NEEDS_ATTENTION';
+export type AttentionReason =
+  | { code: 'quality'; issues: string[] }
+  | { code: 'unreadable' }
+  | { code: 'wrong_type'; detected: string | null }
+  | { code: 'type_uncertain' }
+  | { code: 'manual_check' }
+  | { code: 'low_confidence'; fields: string[] }
+  | { code: 'profile_mismatch'; fields: string[] };
+export interface DocumentReadiness {
+  required_slots: string[];
+  pending_slots: string[];
+  attention_slots: string[];
+  consistency: string | null;
+  consistency_pending: boolean;
+  ready: boolean;
+  verified: boolean;
+}
+export interface DocumentSlot {
+  slot: string;
+  optional: boolean;
+  document_id: string | null;
+  state: DocumentState;
+  outcome: SlotOutcome;
+  reasons: AttentionReason[];
+}
 export interface ApplicationDocuments {
   application_id: string;
+  current_stage: string;
   ml_mode: string;
   mock_notice?: string;
   checklist: string[];
-  slots: Array<{ slot: string; document_id: string | null; state: DocumentState }>;
+  slots: DocumentSlot[];
+  readiness: DocumentReadiness;
   documents: DocumentView[];
+}
+/** POST /applications/{id}/documents/complete */
+export interface DocumentsComplete {
+  application_id: string;
+  advanced: boolean;
+  current_stage: string;
+  needs_eligibility_review?: boolean;
+  readiness: DocumentReadiness;
+  eligibility_gate: EligibilityGate | null;
 }
 
 /** GET /applications/{id}/deficiencies */

@@ -2280,6 +2280,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/applications/{id}/documents/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move an application awaiting its documents on, once they are all uploaded and scanned. */
+        post: operations["DocumentsController_complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2771,6 +2788,10 @@ export interface components {
             /** @enum {string} */
             decision: "APPROVE" | "REJECT";
             reason: string;
+        };
+        SubmitDraftDto: {
+            /** @default false */
+            await_documents: boolean;
         };
     };
     responses: never;
@@ -3458,7 +3479,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitDraftDto"];
+            };
+        };
         responses: {
             201: {
                 headers: {
@@ -5973,6 +5998,25 @@ export interface operations {
                 "application/json": components["schemas"]["CorrectionDecisionDto"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DocumentsController_complete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
