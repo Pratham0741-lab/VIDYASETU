@@ -142,3 +142,20 @@ Officer accounts are refused by this portal.
 
 See `docs/FRONTEND_FINDINGS.md` for the full record and
 `docs/BACKEND_REQUESTS.md` for the backend changes requested.
+
+## UI v2 (2026-09-30)
+
+Restyled to match `docs/ui-v2/*.png`; details, tokens and every deviation
+from the images are in `docs/UI_V2_NOTES.md`.
+
+- Styles: `src/tokens.css` (the only place colours, sizes and spacing are
+  defined), `src/base.css` (base, shell, shared components),
+  `src/screens.css` (one section per screen). `src/index.css` only imports.
+- Fonts: Nunito (headings, numbers), Noto Sans (body), Noto Sans
+  Devanagari first in Hindi; @fontsource, weights 400-800. Icons:
+  lucide-react via `Icon` in `src/ui.tsx`.
+- Checks: `node scripts/type-audit.mjs --check` (no size below 13px, none
+  essential below 14px) and `node scripts/contrast-check.mjs` (WCAG pairs,
+  hard-coded colour count). Colour sampling: `python scripts/sample-colours.py`.
+- Apply no longer pre-checks file size and type; the backend's 413 / 415
+  message is shown.

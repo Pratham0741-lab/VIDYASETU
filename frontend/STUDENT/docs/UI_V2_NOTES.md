@@ -149,3 +149,62 @@ Sampled muted text (#618098) failed 4.5:1 on white (4.16) and the page (3.82); i
 | --c-focus #316ab1 | --c-surface #ffffff | 5.49 | 3 | pass | UI (focus ring) |
 | --c-focus #316ab1 | --c-page #f0f6fb | 5.04 | 3 | pass | UI (focus ring) |
 
+
+## Type audit, final (after Part H)
+
+```
+Font sizes in src: 67 declarations
+
+| size | count |
+|---|---|
+| 13px | 1 |
+| 14px | 40 |
+| 16px | 6 |
+| 18px | 5 |
+| 20px | 10 |
+| 24px | 2 |
+| 28px | 1 |
+| 36px | 2 |
+
+Below 13px: 0
+Below 14px (essential, not a caption token): 0
+Caption (13px, non-essential hints): 1
+  src/base.css: .hint
+```
+
+Contrast, final: `node scripts/contrast-check.mjs` reports 0 failing pairs and 0 hard-coded colours outside `src/tokens.css`.
+
+## Layout rules
+
+- 8px spacing scale (`--sp-*`), container 1200px with 16px / 24px gutters,
+  one card padding (`--card-pad`) and radius (`--radius`) everywhere.
+- Cards: white, light-blue border, 4px accent bar on the left (blue by
+  default; `accent-green`, `accent-amber`, `accent-red`, `accent-none`).
+- Buttons are pills, at least 44px tall, with a 3px focus ring and a flat
+  disabled state. Chips (`Tag`) are pills.
+- Icons: lucide-react through `Icon` (one stroke width, 20 or 24px).
+- Label/value pairs use `dl.kv` (two-column grid, stacks below 400px).
+- Header: language switch, notification bell (unread from
+  GET /notifications, hidden at zero) and log in/out are visible at every
+  width. The step bar scrolls sideways below 768px with the current step
+  centred; `aria-current="step"` on it.
+
+## Differences from the images, and why
+
+| Image | Here | Why |
+|---|---|---|
+| Current step in red (Apply) | Navy with the amber underline; done steps green with a check | Red means error (brief, deviation 1) |
+| Apply order: personal, academic, uploads, final review | Profile, scheme details, final review and submit, upload documents | Backend creates the application at submit; uploads need it (deviation 2) |
+| Green banner for every result | Green only for SELECTED on a final list; navy for not selected (F1-C); blue otherwise | Deviation 3 |
+| 7 steps (Verify, Post-award) | 5 steps | Verify and Post-award (parts E, G) are not wired: no real data shown yet |
+| "Ministry of Education, Government of India" | "Prototype · Smart India Hackathon 2026" | Not an official service |
+| Helpline, helpdesk email, "Secure / Transparent / Student Friendly" footer | Omitted; help card says there is no helpline; footer shows the prototype notice | Invented content |
+| "72% complete", fixed deadlines, "saved automatically" | "Step n of 4" only | No computed progress; drafts are saved explicitly |
+| "AI pre-check completed" node, "7-10 working days" | Journey nodes are the real workflow stages from the stage history; target dates from the stage due date | Invented content |
+| "SMS and email notifications enabled" | In-app unread count, message language and consent statuses | The API exposes no SMS/email channel state |
+| Four score components (34/40 ...) | The breakdown exactly as returned (fields as rows; bars only for parts with value and maximum) | Invented content |
+| "Download result" | Omitted | No route |
+| "Response by" | "Target date" (with overdue / due-today wording) | Stage limits are targets in this prototype |
+| Aadhaar / DigiLocker "Verified", "% match" (review_details.png) | Not built (part E optional, not done) | No such data in the API |
+| Upload row shows file name as title | Document name as title, file name and size below | The checklist slot is what the applicant must supply |
+| Apply size limit "10 MB" | "10 MiB"; size/type checked by the backend and its 413/415 message shown | Real limit is 10 × 1024 × 1024 bytes |
