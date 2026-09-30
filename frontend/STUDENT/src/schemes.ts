@@ -16,6 +16,17 @@ import type { ActiveScheme, EligibilityCheck, FormSchema, SchemeResult } from ".
  *
  * Nothing is filtered out besides older versions of the same code.
  */
+/**
+ * Profile keys the backend takes from records, never from `declared`
+ * (api/src/schemes/eligibility.service.ts RECORDED_FIELDS), split into the
+ * applicant's registration and the application form.
+ */
+export const PROFILE_FIELDS: ReadonlySet<string> = new Set([
+  "category", "pvtg_group", "gender", "is_disabled", "disability_percentage", "domicile_state", "domicile_district", "family_income_annual", "age",
+]);
+export const APPLICATION_FIELDS: ReadonlySet<string> = new Set(["academic_year_number", "institution_name", "institution_code", "course_name", "is_hosteller"]);
+export const RECORDED_FIELDS: ReadonlySet<string> = new Set([...PROFILE_FIELDS, ...APPLICATION_FIELDS]);
+
 export const LIST_TTL_MS = 30_000;
 export const MIN_INTERVAL_MS = 10_000;
 

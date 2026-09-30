@@ -134,7 +134,8 @@ export interface FormSchema {
   scheme_version_id: string;
   status: string;
   fields: FormField[];
-  documents: { required_documents: string[]; checklist: string[] };
+  documents: { required_documents: string[]; rule_doc_refs: Array<{ doc_ref: string; rule_ids: string[] }>; checklist: string[] };
+  unparseable_rules: unknown[];
 }
 
 /** GET /applications/{id} (and list items) */

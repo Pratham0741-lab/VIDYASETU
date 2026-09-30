@@ -8,14 +8,9 @@ import { useMyApplications } from "../applications";
 import { useAuth } from "../auth/AuthProvider";
 import { useI18n, type MessageKey } from "../i18n";
 import { categoryLabel } from "../i18n/labels";
-import { useSchemeCatalogue, type SchemeEntry } from "../schemes";
+import { RECORDED_FIELDS, useSchemeCatalogue, type SchemeEntry } from "../schemes";
 import { Button, Card, ErrorNote, Icon, InfoNote, ScreenTitle, Tag, type Tone } from "../ui";
 
-/** Profile keys the backend takes from the applicant / application record; they cannot be declared. */
-const RECORDED_FIELDS = new Set([
-  "category", "pvtg_group", "gender", "is_disabled", "disability_percentage", "domicile_state", "domicile_district",
-  "family_income_annual", "age", "academic_year_number", "institution_name", "institution_code", "course_name", "is_hosteller",
-]);
 const MAX_BYTES = 10 * 1024 * 1024;
 const ACCEPTED = ["application/pdf", "image/jpeg", "image/png"];
 const POLL_MS = 2000;

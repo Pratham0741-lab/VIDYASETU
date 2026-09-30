@@ -10,6 +10,7 @@ import DeficiencyScreen from "./screens/Deficiencies";
 import LandingScreen from "./screens/Landing";
 import LoginScreen from "./screens/Login";
 import RegisterScreen from "./screens/Register";
+import SchemeDetailScreen from "./screens/SchemeDetail";
 import SchemesScreen from "./screens/Schemes";
 import MeritScreen from "./screens/Result";
 
@@ -45,6 +46,7 @@ export default function App() {
             <Route element={<Shell />}>
               <Route index element={<LandingScreen />} />
               <Route path="schemes" element={<SchemesScreen />} />
+              <Route path="schemes/:code" element={<SchemeDetailScreen />} />
               <Route path="login" element={<AnonymousOnly><LoginScreen /></AnonymousOnly>} />
               <Route path="register" element={<AnonymousOnly next="/consent"><RegisterScreen /></AnonymousOnly>} />
               <Route path="consent" element={<RequireAuth><ConsentScreen /></RequireAuth>} />

@@ -70,3 +70,47 @@ without a key is shown humanised (underscores to spaces, sentence case), e.g.
 | `schemes.noMatchTitle` | No scheme matches your search | आपकी खोज से कोई योजना मेल नहीं खाती |
 | `schemes.noMatchText` | Nothing matches “{q}”. Try another name or code. | “{q}” से कुछ मेल नहीं खाता। कोई और नाम या कोड आज़माएँ। |
 | `schemes.englishOnly` | Scheme names are shown as the backend returns them (English only). | योजनाओं के नाम वैसे ही दिखाए गए हैं जैसे बैकएंड देता है (केवल अंग्रेज़ी में)। |
+| `detail.back` | All schemes | सभी योजनाएँ |
+| `detail.allSchemes` | See all schemes | सभी योजनाएँ देखें |
+| `detail.loadingTitle` | Loading scheme… | योजना लोड हो रही है… |
+| `detail.notFoundTitle` | Scheme not found | योजना नहीं मिली |
+| `detail.notFoundText` | No active scheme has the code {code}. | {code} कोड वाली कोई सक्रिय योजना नहीं है। |
+| `detail.notFoundHint` | It may have been retired, or the link may be wrong. | हो सकता है वह बंद हो गई हो, या लिंक गलत हो। |
+| `detail.checkThis` | Check eligibility for this scheme | इस योजना के लिए पात्रता जाँचें |
+| `detail.apply` | Apply | आवेदन करें |
+| `detail.fieldsEyebrow` | From the scheme rules | योजना नियमों से |
+| `detail.fieldsTitle` | What you have to fill in | आपको क्या भरना है |
+| `detail.fieldsText` | The details this scheme's rules read, as the backend lists them. | इस योजना के नियम जो विवरण पढ़ते हैं, जैसे बैकएंड उन्हें सूचीबद्ध करता है। |
+| `detail.noFields` | The backend lists no fields for this scheme. | बैकएंड इस योजना के लिए कोई फ़ील्ड नहीं बताता। |
+| `detail.groupProfile` | From your registration | आपके पंजीकरण से |
+| `detail.groupProfileHint` | Recorded once when you register; officers check them. | पंजीकरण के समय एक बार दर्ज; अधिकारी इनकी जाँच करते हैं। |
+| `detail.groupApplication` | In the application form | आवेदन फ़ॉर्म में |
+| `detail.groupApplicationHint` | Your institution and course, entered when you apply. | आपका संस्थान और पाठ्यक्रम, आवेदन के समय भरा जाता है। |
+| `detail.groupScheme` | Asked by this scheme's rules | इस योजना के नियमों द्वारा पूछा गया |
+| `detail.groupSchemeHint` | Extra questions you answer in the scheme form. | अतिरिक्त प्रश्न जिनका उत्तर आप योजना फ़ॉर्म में देते हैं। |
+| `detail.options` | Allowed: {options} | मान्य: {options} |
+| `detail.limit` | Limit {values} | सीमा {values} |
+| `detail.eligibilityTitle` | Eligibility | पात्रता |
+| `detail.eligibilityText` | Eligibility is checked against your details when you use the eligibility checker or submit an application. | जब आप पात्रता जाँच का उपयोग करते हैं या आवेदन जमा करते हैं, तब आपके विवरण से पात्रता जाँची जाती है। |
+| `detail.docsTitle` | Documents to upload | अपलोड करने वाले दस्तावेज़ |
+| `detail.noDocs` | The backend lists no documents for this scheme. | बैकएंड इस योजना के लिए कोई दस्तावेज़ नहीं बताता। |
+| `detail.required` | Required | आवश्यक |
+| `detail.requiredDoc` | Listed as a required document | आवश्यक दस्तावेज़ के रूप में सूचीबद्ध |
+| `detail.ruleDocsIntro` | Also checked by the scheme rules: | योजना नियमों द्वारा भी जाँचे जाते हैं: |
+| `detail.usedBy` | Used by: {rules} | इनके द्वारा उपयोग: {rules} |
+| `detail.unparseable` | {n} rule(s) of this scheme could not be read by the backend. | इस योजना के {n} नियम बैकएंड नहीं पढ़ सका। |
+| `formField.category` | Category | श्रेणी |
+| `formField.family_income_annual` | Annual family income | वार्षिक पारिवारिक आय |
+| `formField.education_level` | Education level | शिक्षा स्तर |
+| `formField.academic_year_number` | Year of course | पाठ्यक्रम का वर्ष |
+| `formField.age` | Age | आयु |
+| `formField.gender` | Gender | लिंग |
+| `formField.is_disabled` | Person with disability | दिव्यांग व्यक्ति |
+| `formField.disability_percentage` | Disability percentage | दिव्यांगता प्रतिशत |
+| `formField.domicile_state` | State of domicile | अधिवास राज्य |
+| `formField.domicile_district` | District of domicile | अधिवास ज़िला |
+| `formField.institution_name` | Institution | संस्थान |
+| `formField.institution_code` | Institution code | संस्थान कोड |
+| `formField.course_name` | Course | पाठ्यक्रम |
+| `formField.is_hosteller` | Living in a hostel | छात्रावास में रहते हैं |
+| `slot.admission_offer_letter` | Admission offer letter | प्रवेश प्रस्ताव पत्र |
