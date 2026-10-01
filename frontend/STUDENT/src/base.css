@@ -213,7 +213,7 @@ img { max-width: 100%; }
 
 /* ------------------------------------------------------------ forms */
 label { display: block; margin: var(--sp-4) 0; color: var(--c-ink); font-size: var(--fs-sm); font-weight: 700; }
-label > span:not(.sr-only) { float: right; color: var(--c-muted); font-weight: 400; }
+label > span:not(.sr-only):not(.hint):not(.field-error) { float: right; color: var(--c-muted); font-weight: 400; }
 input, select, textarea {
   width: 100%;
   min-height: 48px;

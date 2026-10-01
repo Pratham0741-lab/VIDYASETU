@@ -13,7 +13,7 @@ from app.errors import (
 )
 from app.health import router as health_router
 from app.logging import logger
-from app.middleware import RequestIDMiddleware
+from app.middleware import DocumentConcurrencyMiddleware, RequestIDMiddleware
 from app.routes.quality import router as quality_router
 from app.routes.classify import router as classify_router
 from app.routes.extract import router as extract_router
@@ -41,7 +41,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Request ID propagation middleware
+DOCUMENTS_PREFIX = "/v1/documents"
+
+# One document at a time (settings.max_concurrent_documents); health is never queued.
+app.add_middleware(
+    DocumentConcurrencyMiddleware, prefix=DOCUMENTS_PREFIX, limit=settings.max_concurrent_documents
+)
+# Request ID propagation middleware (added last: outermost, so queued requests carry their ID)
 app.add_middleware(RequestIDMiddleware)
 
 # Standardized Error Handlers
@@ -54,7 +60,6 @@ app.add_exception_handler(Exception, unhandled_exception_handler)
 app.include_router(health_router)
 # Document endpoints live under the api's contract prefix
 # (api/src/ml-client/document-api.ts: ML_DOCUMENT_PATHS).
-DOCUMENTS_PREFIX = "/v1/documents"
 app.include_router(quality_router, prefix=DOCUMENTS_PREFIX)
 app.include_router(classify_router, prefix=DOCUMENTS_PREFIX)
 app.include_router(extract_router, prefix=DOCUMENTS_PREFIX)

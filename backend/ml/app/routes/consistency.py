@@ -33,7 +33,7 @@ class ConsistencyResponse(BaseModel):
 
 
 @router.post("/consistency", response_model=ConsistencyResponse)
-async def check_consistency_endpoint(payload: ConsistencyRequest):
+def check_consistency_endpoint(payload: ConsistencyRequest):
     """
     Checks cross-document consistency (name matching, date-of-birth matching)
     across two or more documents from the same application.

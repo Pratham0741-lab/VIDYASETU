@@ -112,3 +112,52 @@ portal needs, why, and the fallback the portal uses until it exists.
 - **Fallback:** the portal hides nothing; such schemes get their own row
   after a check, marked "Evaluated by the check, not in the published scheme
   list".
+
+## Validate the bank_account format on registration (2026-10-01)
+
+The student form now collects IFSC and account number separately and sends
+`bank_account` as `IFSC:account` (the format of the seeded applicants and of
+`fraud-match.ts`). `RegisterDto.bank_account` only checks `@Length(1, 64)`.
+Request: validate `^[A-Z]{4}0[A-Z0-9]{6}:\d{9,18}$` server-side (400 with a
+message key, e.g. `api.bank_account.invalid`). No data change or migration:
+existing values already use this format.
+
+## Classify an uploaded file without naming its slot (2026-10-01)
+
+The student portal now takes several files at once and places each in the
+matching checklist row. POST /applications/:id/documents requires
+`document_type`, so the portal guesses the row from the file name (else the
+first waiting row), then moves the file when the scan reports `wrong_type`
+with a `detected` type, mirroring SLOT_DOCUMENT_TYPE by keyword in the
+client. A wrong first guess leaves that file in the guessed row (shown as
+needs attention) until another file replaces it, because a document cannot
+be removed. Request: either make `document_type` optional (the backend
+classifies and picks the row), or add POST /applications/:id/documents/classify
+returning the canonical type and target slot, plus the slot -> type map in
+GET /applications/:id/documents.
+
+Update (same day): withdrawn. The portal is back to one upload per row.
+
+## Duplicate checklist slots (2026-10-01)
+
+Scheme checklists list the same document twice: a worded slot (e.g.
+"Family Income Certificate") and a generic key (`income_certificate`,
+`caste_certificate`, `marksheet`, `bonafide_certificate`,
+`admission_offer_letter`). Both are required for readiness. The student
+portal now hides the generic row when a worded row of the same document
+type exists, and files the applicant's one upload under both slots.
+Request: derive the checklist without the generic duplicates (or mark them
+as aliases) so one document satisfies both.
+
+## Let applicants remove an uploaded document (2026-10-01)
+
+The student portal should offer "Remove" on an uploaded document row. The
+API has no delete route (checked docs/openapi.json and the live
+/docs/openapi.json). Request: DELETE /api/v1/documents/{id} for the owning
+applicant while the application is in DRAFT/SUBMITTED (documents not yet
+scanned into a decision) or DEFECTIVE for slots named in an open
+deficiency; 409 otherwise. Soft delete (keep the audit trail and file for
+officers), return the updated slot view, and recompute readiness. For the
+duplicate generic slots (see "Duplicate checklist slots"), removing the
+worded row's document should also clear its generic twin, or the portal
+will call it for both.

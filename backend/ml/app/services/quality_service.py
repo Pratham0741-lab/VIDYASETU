@@ -3,6 +3,10 @@ import cv2
 import numpy as np
 from app.config import settings
 
+# Issues that make a file unusable (the applicant must upload it again). PDF
+# and decode problems (routes/quality.py) are unusable as well.
+BLOCKING_ISSUES = frozenset({"blank_page"})
+
 
 def _paper_map(gray: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """The paper itself with the printing removed: a morphological closing wider
@@ -134,10 +138,21 @@ def assess_image_quality(image: np.ndarray) -> Dict[str, Any]:
     if cut_sides:
         issues.append("cut_off_edge")
 
-    usable = len(issues) == 0
+    # 6. Blank page: (almost) no ink anywhere, even at a low contrast that a
+    #    heavily blurred page still reaches. The only content-level rejection.
+    ink_ratio = float(((closed.astype(np.int16) - gray.astype(np.int16)) >= 12).mean())
+    blank = ink_ratio < settings.blank_page_max_ink_ratio and float(gray.std()) < 4.0
+    if blank:
+        issues.append("blank_page")
+
+    # Blur, resolution, glare, darkness and cut edges are warnings: OCR still
+    # runs and an officer checks what it could not read. Only a page with
+    # nothing on it is unusable (BLOCKING_ISSUES).
+    usable = not any(i in BLOCKING_ISSUES for i in issues)
+    warnings = [i for i in issues if i not in BLOCKING_ISSUES]
 
     # Calculate certainty of the verdict based on distance from decision thresholds
-    if usable:
+    if not issues:
         # Distance margin above thresholds
         blur_margin = min(max(blur_distance, 0.0), 1.5) / 1.5
         res_margin = min(max(min_res_dist, 0.0), 1.5) / 1.5
@@ -166,6 +181,8 @@ def assess_image_quality(image: np.ndarray) -> Dict[str, Any]:
             max_defect_margin = max(max_defect_margin, dark_margin)
         if "cut_off_edge" in issues:
             max_defect_margin = max(max_defect_margin, 0.8)
+        if blank:
+            max_defect_margin = 1.0
 
         # Baseline certainty for borderline fail is 0.58, scaling to 0.98 for clear defect
         confidence = round(min(0.98, 0.58 + 0.39 * max_defect_margin), 2)
@@ -173,7 +190,8 @@ def assess_image_quality(image: np.ndarray) -> Dict[str, Any]:
     return {
         "value": {
             "usable": usable,
-            "issues": issues
+            "issues": issues,
+            "warnings": warnings,
         },
         "confidence": confidence,
         "details": {
@@ -183,6 +201,7 @@ def assess_image_quality(image: np.ndarray) -> Dict[str, Any]:
             "glare_peak_excess": glare["peak_excess"],
             "paper_level": glare["paper_level"],
             "cut_sides": cut_sides,
+            "ink_ratio": round(ink_ratio, 5),
             "edge_ink_runs": {side: e["runs"] for side, e in edges.items()},
         }
     }

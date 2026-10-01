@@ -35,7 +35,8 @@ DOC_RULES: Dict[str, Dict[str, Any]] = {
             r"caste\s*[:\-]", r"sub-caste\s*[:\-]", r"category\s*[:\-]"
         ],
         "negatives": [
-            r"\btuition fee\b", r"\bpassbook\b", r"\bsemester\b", r"\bctc\b"
+            r"\btuition fee\b", r"\bpassbook\b", r"\bsemester\b", r"\bctc\b",
+            r"\ballotment (?:letter|order)\b", r"\bseat allotment\b", r"\badmission letter\b"
         ]
     },
     "INCOME_CERTIFICATE": {
@@ -72,7 +73,8 @@ DOC_RULES: Dict[str, Dict[str, Any]] = {
             r"\bsemester\s*(?:[1-8]|i|ii|iii|iv|v|vi|vii|viii)\b"
         ],
         "negatives": [
-            r"\btahsildar\b", r"\bannual income\b", r"\bifsc code\b", r"\bcost to company\b"
+            r"\btahsildar\b", r"\bannual income\b", r"\bifsc code\b", r"\bcost to company\b",
+            r"\ballotment (?:letter|order)\b", r"\bseat allotment\b", r"\badmission letter\b"
         ]
     },
     "FEE_RECEIPT": {
@@ -90,7 +92,8 @@ DOC_RULES: Dict[str, Dict[str, Any]] = {
             r"\btransaction\s*id\s*[:\-]?\s*[A-Za-z0-9\-]+"
         ],
         "negatives": [
-            r"\btahsildar\b", r"\bcaste certificate\b", r"\bdisability certificate\b", r"\boffer of employment\b"
+            r"\btahsildar\b", r"\bcaste certificate\b", r"\bdisability certificate\b", r"\boffer of employment\b",
+            r"\ballotment (?:letter|order)\b", r"\bseat allotment\b", r"\badmission letter\b"
         ]
     },
     "BANK_PASSBOOK": {
@@ -127,7 +130,10 @@ DOC_RULES: Dict[str, Dict[str, Any]] = {
             r"bonafide\s+student\s+of"
         ],
         "negatives": [
-            r"\btahsildar\b", r"\bincome certificate\b", r"\bifsc\b", r"\bgrade point\b", r"\bappointment letter\b"
+            r"\btahsildar\b", r"\bincome certificate\b", r"\bifsc\b", r"\bgrade point\b", r"\bappointment letter\b",
+            # An admission (offer) letter talks about students and programmes too.
+            r"\badmission letter\b", r"\b(?:offer|letter|confirmation) of admission\b", r"\bprovisional(?:ly)? admi",
+            r"\bpleased to (?:inform|offer)\b", r"\bcongratulat"
         ]
     },
     "DISABILITY_CERT": {
@@ -145,22 +151,36 @@ DOC_RULES: Dict[str, Dict[str, Any]] = {
             r"disability\s*(?:percentage|ratio)\s*[:\-]?\s*\d{1,3}\s*%"
         ],
         "negatives": [
-            r"\btuition fee\b", r"\bpassbook\b", r"\bmarksheet\b", r"\boffer letter\b"
+            r"\btuition fee\b", r"\bpassbook\b", r"\bmarksheet\b", r"\boffer letter\b",
+            r"\ballotment (?:letter|order)\b", r"\bseat allotment\b", r"\badmission letter\b"
         ]
     },
     "OFFER_LETTER": {
         "primary": [
             r"\boffer letter\b", r"\bletter of appointment\b", r"\bemployment offer\b",
-            r"\bwe are pleased to offer\b", r"\bterms of employment\b"
+            r"\bwe are pleased to offer\b", r"\bterms of employment\b",
+            # Admission offers (the checklist's "Admission offer letter" slot)
+            r"\badmission letter\b", r"\b(?:offer|letter|confirmation) of admission\b",
+            r"\bprovisional(?:ly)? admi(?:ssion|tted)\b", r"\badmission offer\b", r"\bunconditional offer\b",
+            r"\bconditional offer\b",
+            # Counselling seat allotment letters ("Provisional Seat Allotment Letter", "Allotment Order")
+            r"\ballotment (?:letter|order)\b", r"\bseat allotment\b", r"\bprovisional allotment\b",
+            r"\ballotted (?:seat|institute|college|program|programme|course)\b", r"\bseat acceptance\b"
         ],
         "secondary": [
             r"\bcost to company\b", r"\bctc\b", r"\bjoining date\b", r"\bdesignation\b",
-            r"\bhuman resources\b", r"\bhr manager\b", r"\bprobation period\b", r"\bannual salary\b"
+            r"\bhuman resources\b", r"\bhr manager\b", r"\bprobation period\b", r"\bannual salary\b",
+            r"\bcongratulat", r"\bpleased to inform\b", r"\btuition fee", r"\bcommencement\b",
+            r"\breport(?:ing)? (?:date|on)\b", r"\bintake\b", r"\badmission\b"
         ],
         "patterns": [
             r"\bctc\s*[:\-]?\s*(?:rs\.?|inr)?\s*[\d,]+",
             r"pleased\s+to\s+offer\s+you",
-            r"date\s+of\s+joining\s*[:\-]"
+            r"date\s+of\s+joining\s*[:\-]",
+            r"(?:been|are|is)\s+(?:selected|admitted|offered\s+(?:a\s+)?(?:seat|admission))",
+            r"(?:been\s+|provisionally\s+)allotted\s+(?:a\s+)?seat",
+            r"selected\s+for\s+admission",
+            r"admi(?:tted|ssion)\s+(?:to|in|into|for)\s+(?:the\s+)?(?:programme|program|course|b\.|m\.|bachelor|master|ph\.?d)"
         ],
         "negatives": [
             r"\btahsildar\b", r"\bcaste certificate\b", r"\bbonafide certificate\b", r"\bstatement of marks\b"

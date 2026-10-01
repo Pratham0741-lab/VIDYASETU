@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 from app.services.quality_service import assess_image_quality
-from app.utils.image import PdfUnusableError, decode_base64_image_with_bytes
+from app.utils.image import InvalidImageError, PdfUnusableError, decode_base64_image_with_bytes
 from app.utils.pdf import is_pdf, pdf_info
 
 router = APIRouter(tags=["Quality Gate"])
@@ -13,8 +13,16 @@ class QualityRequest(BaseModel):
 
 
 class QualityValue(BaseModel):
-    usable: bool = Field(..., description="Whether the image meets minimal quality standards for OCR processing")
-    issues: List[str] = Field(..., description="Actionable defect list (e.g. 'blurred', 'underexposed', 'glare_detected')")
+    usable: bool = Field(
+        ...,
+        description="Whether the file can be read at all. False only for a blank page or a file that "
+        "cannot be decoded; blur, low resolution, glare and cut edges never make it unusable.",
+    )
+    issues: List[str] = Field(..., description="Every finding (e.g. 'blurred', 'cut_off_edge', 'blank_page')")
+    warnings: List[str] = Field(
+        default_factory=list,
+        description="Findings that do not block OCR (issues minus the blocking ones): shown, never a rejection",
+    )
 
 
 class QualityDetails(BaseModel):
@@ -37,7 +45,7 @@ class QualityResponse(BaseModel):
 
 
 @router.post("/quality", response_model=QualityResponse)
-async def check_image_quality(payload: QualityRequest):
+def check_image_quality(payload: QualityRequest):
     # Phase 13E: a PDF is judged on its rasterised page 1; an unusable PDF
     # (encrypted / unreadable / too large) is a clean "not usable" verdict,
     # so the api records it like any rejected scan - never an error.
@@ -45,7 +53,14 @@ async def check_image_quality(payload: QualityRequest):
         image, raw = decode_base64_image_with_bytes(payload.image_base64)
     except PdfUnusableError as err:
         return {
-            "value": {"usable": False, "issues": [err.issue]},
+            "value": {"usable": False, "issues": [err.issue], "warnings": []},
+            "confidence": 1.0,
+            "details": {"blur_score": 0.0, "resolution": [0, 0], "glare_ratio": 0.0},
+        }
+    except InvalidImageError:
+        # Corrupt or not an image at all: unusable as a file (re-upload), not an error.
+        return {
+            "value": {"usable": False, "issues": ["unreadable_file"], "warnings": []},
             "confidence": 1.0,
             "details": {"blur_score": 0.0, "resolution": [0, 0], "glare_ratio": 0.0},
         }

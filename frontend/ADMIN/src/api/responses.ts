@@ -145,6 +145,21 @@ export interface EligibilityMismatch {
   sensitive: boolean;
 }
 
+/** One verification rule's result for a document, with the compared values. */
+export interface RuleCheck {
+  rule: string;
+  field: string;
+  mandatory: boolean;
+  status: 'PASS' | 'FAIL' | 'NOT_READ' | 'UNAVAILABLE' | 'SKIPPED';
+  extracted: string | number | null;
+  expected: string | number | null;
+}
+/** Per-document-type verification: OCR extracts, the rules decide. */
+export interface DocumentVerification {
+  document_type: string;
+  result: 'VERIFIED' | 'FLAGGED' | 'UNREAD';
+  checks: RuleCheck[];
+}
 export interface DocumentView {
   document_id: string;
   application_id: string;
@@ -159,6 +174,8 @@ export interface DocumentView {
   digilocker: { reference: string | null; issuer: string | null; issued_on: string | null; verified_at: string | null } | null;
   quality: { usable: boolean | null; issues: string[]; confidence: number | null } | null;
   verification_status: string;
+  /** Rule results (income, ST certificate, marksheet, bonafide); null for other types. */
+  verification?: DocumentVerification | null;
   extraction: {
     id: string;
     status: string;

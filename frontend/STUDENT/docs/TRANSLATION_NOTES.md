@@ -149,3 +149,13 @@ without a key is shown humanised (underscores to spaces, sentence case), e.g.
 | `apply.stepN` (UI v2, sentence case) | Step {n} | (unchanged) |
 | `apply.statusLive` | {doc}: {status} | {doc}: {status} |
 | `apply.stepCurrent` / `apply.stepDone` | (current step) / (completed) | (मौजूदा चरण) / (पूरा हुआ) |
+| `field.ifsc` / `field.accountNumber` | IFSC code / Account number | IFSC कोड / खाता संख्या |
+| `field.ifscHint` / `field.accountNumberHint` | 11 characters, for example SBIN0001234 / 9 to 18 digits | 11 अक्षर, उदाहरण SBIN0001234 / 9 से 18 अंक |
+| `field.ifscError` | Enter a valid IFSC: 4 letters, then 0, then 6 letters or digits. | मान्य IFSC दर्ज करें: 4 अक्षर, फिर 0, फिर 6 अक्षर या अंक। |
+| `field.accountNumberError` | Enter an account number of 9 to 18 digits. | 9 से 18 अंकों की खाता संख्या दर्ज करें। |
+| `doc.outcome.MISSING` (multi-upload) | Waiting | प्रतीक्षा में |
+| `apply.uploadDocuments` | Upload documents | दस्तावेज़ अपलोड करें |
+| `apply.dropText` | Drop your files here, or choose them. Each file is placed in the matching row after it is scanned. | अपनी फ़ाइलें यहाँ छोड़ें या चुनें। स्कैन के बाद हर फ़ाइल सही पंक्ति में रखी जाती है। |
+| `apply.noRowLeft` | {name}: every document is already verified; use Replace on a row to change one. | {name}: सभी दस्तावेज़ पहले से सत्यापित हैं; किसी को बदलने के लिए उस पंक्ति में बदलें चुनें। |
+| `apply.replaceNamed` | Replace {doc} | {doc} बदलें |
+| `doc.reason.type_uncertain` (multi-upload) | Needs attention: officer will check (the document type could not be detected). | ध्यान दें: अधिकारी जाँच करेंगे (दस्तावेज़ का प्रकार पहचाना नहीं जा सका)। |

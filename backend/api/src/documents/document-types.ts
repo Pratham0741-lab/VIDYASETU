@@ -89,3 +89,24 @@ export function canonicalTypeForSlot(slot: string): CanonicalDocumentType | null
     ? SLOT_DOCUMENT_TYPE[slot]
     : null;
 }
+
+/** Classification confidence needed before an upload is moved to another row. */
+export const RECLASSIFY_MIN_CONFIDENCE = 0.8;
+
+/**
+ * The checklist row an upload belongs in when its content is confidently a
+ * different document type than the row it was uploaded to (a marksheet put
+ * in the income row): the first other slot of that canonical type. null =
+ * stays where it was (same type, not confident, or no such row).
+ */
+export function slotForClassified(
+  uploadSlot: string,
+  classified: { type: string | null; confidence: number | null },
+  checklist: readonly string[],
+): string | null {
+  const type = classified.type;
+  if (!type || (classified.confidence ?? 0) < RECLASSIFY_MIN_CONFIDENCE) return null;
+  if (!(CANONICAL_DOCUMENT_TYPES as readonly string[]).includes(type)) return null;
+  if (canonicalTypeForSlot(uploadSlot) === type) return null;
+  return checklist.find((s) => s !== uploadSlot && canonicalTypeForSlot(s) === type) ?? null;
+}

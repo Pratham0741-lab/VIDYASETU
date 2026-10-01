@@ -198,6 +198,10 @@ function buildPlan() {
     { key: 'SNO', email: `sno.jharkhand.${DOMAIN}`, name: 'Jharkhand State Nodal Officer (demo)', role: 'STATE_NODAL_OFFICER', jurisdiction_state: STATE },
     ...DISTRICTS.map((d) => ({ key: `DNO:${d}`, email: `dno.${d.toLowerCase()}.${DOMAIN}`, name: `${d} District Nodal Officer (demo)`, role: 'DISTRICT_NODAL_OFFICER', jurisdiction_state: STATE, jurisdiction_district: d })),
     ...INSTITUTIONS.map((i) => ({ key: `INO:${i.code}`, email: `ino.${i.code.toLowerCase()}.${DOMAIN}`, name: `Nodal Officer, ${i.name}`, role: 'INSTITUTE_NODAL_OFFICER', jurisdiction_state: STATE, jurisdiction_district: i.district, institution_code: i.code })),
+    // Generic E2E logins (E2E_DNO_* / E2E_INO_*). DNO and INO must be pinned to a district
+    // (and an INO to an institution), so both sit where demo applications are: Gumla, JH-GUM-01.
+    { key: 'DNO', email: `dno.jharkhand.${DOMAIN}`, name: 'Jharkhand District Nodal Officer, Gumla (demo)', role: 'DISTRICT_NODAL_OFFICER', jurisdiction_state: STATE, jurisdiction_district: 'Gumla' },
+    { key: 'INO', email: `ino.jharkhand.${DOMAIN}`, name: 'Jharkhand Institute Nodal Officer, JH-GUM-01 (demo)', role: 'INSTITUTE_NODAL_OFFICER', jurisdiction_state: STATE, jurisdiction_district: 'Gumla', institution_code: 'JH-GUM-01' },
     { key: 'COMMITTEE', email: `committee.jharkhand.${DOMAIN}`, name: 'Jharkhand Selection Committee Member (demo)', role: 'COMMITTEE', jurisdiction_state: STATE },
     { key: 'AUDITOR', email: `auditor.jharkhand.${DOMAIN}`, name: 'Jharkhand Scholarship Auditor (demo)', role: 'AUDITOR', jurisdiction_state: STATE },
   ];

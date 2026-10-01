@@ -48,7 +48,10 @@ def _as_date(word: str) -> Optional[str]:
 
 
 def _digits(text: str) -> str:
-    return re.sub(r"\D", "", text)
+    # The same OCR digit repair extraction applies ("2,68,00o" is 268000).
+    from app.services.layout_extract import fix_number_tokens
+
+    return re.sub(r"\D", "", fix_number_tokens(text))
 
 
 def _is_date_value(value: Any) -> bool:

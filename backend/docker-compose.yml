@@ -212,6 +212,8 @@ services:
       ML_LOG_LEVEL: ${ML_LOG_LEVEL:-INFO}
       ML_SERVICE_NAME: vidyasetu-ml
       ML_MODELS_DIR: /app/models
+    # PaddleOCR inference fits comfortably (peak ~2.3 GB measured on the sample set).
+    mem_limit: 4g
     # backend ONLY (internal network): no internet access, no published port.
     networks:
       - backend

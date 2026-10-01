@@ -2,9 +2,9 @@
 PDF uploads (Phase 13E): page 1 rasterised to an image, so PDFs go through
 the same quality -> classify -> extract -> consistency path as photos.
 
-  * Resolution: PDF_RASTER_DPI (200). A page of W x H points becomes
+  * Resolution: PDF_RASTER_DPI (300). A page of W x H points becomes
     round(W/72*200) x round(H/72*200) pixels. Field boxes and crops of a PDF
-    are in THIS raster's pixel grid (coordinate_space pdf_page1_raster_200dpi).
+    are in THIS raster's pixel grid (coordinate_space pdf_page1_raster_300dpi).
   * Page 1 only: later pages are not read (page_count is reported).
   * Limits, checked before anything is rendered: a page side over
     MAX_PAGE_SIDE_PT (A2's long side) or a raster over MAX_RASTER_PIXELS
@@ -22,7 +22,7 @@ from typing import Any, Dict, Tuple
 import numpy as np
 import pypdfium2 as pdfium
 
-PDF_RASTER_DPI = 200
+PDF_RASTER_DPI = 300
 MAX_PAGE_SIDE_PT = 1684  # A2 long side (594 mm)
 MAX_RASTER_PIXELS = 20_000_000
 COORDINATE_SPACE = f"pdf_page1_raster_{PDF_RASTER_DPI}dpi"

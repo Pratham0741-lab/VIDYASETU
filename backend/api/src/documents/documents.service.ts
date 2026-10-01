@@ -27,8 +27,15 @@ import {
 import { DigiLockerAdapter } from '../integrations/digilocker/digilocker.adapter';
 import { SystemActor } from '../workflow/system-actor';
 import { DeficienciesService } from '../deficiencies/deficiencies.service';
-import { canonicalTypeForSlot, isOptionalSlot } from './document-types';
+import { canonicalTypeForSlot, isOptionalSlot, slotForClassified } from './document-types';
 import { officerAccepted, readiness, SlotResult, slotResult } from './document-readiness';
+import {
+  enteredMarks,
+  schemeLimits,
+  Verification,
+  VerificationContext,
+  verifyDocument,
+} from './document-verification';
 import { compareWithEligibility } from './eligibility-cross-check';
 import { WorkflowService } from '../workflow/workflow.service';
 import type { Readable } from 'node:stream';
@@ -112,6 +119,31 @@ function sanitizeFileName(name: string): string {
  * RLS decide visibility (404 otherwise), and every write is audited with the
  * caller's identity.
  */
+/**
+ * Quality findings that never make a file unusable: OCR runs anyway. Codes as
+ * the ml service and the mock report them ("image_blurred: ..." -> image_blurred).
+ */
+const SOFT_QUALITY_ISSUES: ReadonlySet<string> = new Set([
+  'blurred',
+  'image_blurred',
+  'low_resolution',
+  'glare_detected',
+  'underexposed',
+  'cut_off_edge',
+  'page_cropped',
+]);
+
+/** usable: the file can be read at all (ml's verdict, or only soft findings). */
+export function qualityVerdict(value: { usable?: boolean; issues?: string[] }): {
+  usable: boolean;
+  warnings: string[];
+} {
+  const issues = value.issues ?? [];
+  const warnings = issues.filter((i) => SOFT_QUALITY_ISSUES.has(i.split(':')[0].trim()));
+  const usable = value.usable === true || (issues.length > 0 && warnings.length === issues.length);
+  return { usable, warnings };
+}
+
 @Injectable()
 export class DocumentsService {
   constructor(
@@ -146,11 +178,50 @@ export class DocumentsService {
         document_consistency_status: true,
         document_consistency_details: true,
         document_consistency_checked_at: true,
+        academic_year: true,
+        institution_name: true,
+        institution_code: true,
         scheme_version: { select: { config: true } },
       },
     });
     if (!app) throw new AppError(ErrorCode.NOT_FOUND);
     return app;
+  }
+
+  /**
+   * What each document is verified against: the applicant (name, category,
+   * entered income), the application (institution, academic year), the
+   * declared answers (entered marks) and the scheme's own limits. A value the
+   * caller cannot read stays null: the rule that needs it is left to an officer.
+   */
+  private async verificationContext(
+    app: Awaited<ReturnType<DocumentsService['loadApplication']>>,
+  ): Promise<VerificationContext> {
+    // Separate query (not an include) so the PII extension decrypts income.
+    const applicant = await this.db.client.applicant
+      .findUnique({
+        where: { id: app.applicant_id },
+        select: { first_name: true, last_name: true, category: true, income: true },
+      })
+      .catch(() => null);
+    const draft = await this.db.client.applicationDraft
+      .findFirst({ where: { submitted_application_id: app.id }, select: { declared: true } })
+      .catch(() => null);
+    const income = applicant?.income == null ? NaN : Number(applicant.income);
+    const marks = enteredMarks(draft?.declared);
+    const name = applicant ? `${applicant.first_name} ${applicant.last_name}`.trim() : '';
+    return {
+      applicant_name: name || null,
+      category: applicant?.category ?? null,
+      entered_income: Number.isFinite(income) ? income : null,
+      entered_percentage: marks.percentage,
+      entered_marks: marks.marks,
+      institution_name: app.institution_name,
+      institution_code: app.institution_code,
+      academic_year: app.academic_year,
+      ...schemeLimits(app.scheme_version.config),
+      now: new Date(),
+    };
   }
 
   /** Phase 3's derivation, reused as-is: the application's document slots. */
@@ -196,9 +267,11 @@ export class DocumentsService {
       input.contentType,
     );
 
-    // 2. Quality (synchronous).
+    // 2. Quality (synchronous). Advisory: only a file unusable as a file is
+    // turned away; blur, crop, glare and low resolution are warnings and OCR
+    // runs anyway (an officer checks whatever it cannot read).
     const quality = await this.ml.checkQuality(input.buffer);
-    const usable = quality.value.usable;
+    const { usable, warnings } = qualityVerdict(quality.value);
     const document = await this.db.client.document.create({
       data: {
         application_id: app.id,
@@ -225,7 +298,7 @@ export class DocumentsService {
       ...(this.mockMode ? { mock_notice: MOCK_NOTICE } : {}),
     };
     if (!usable) {
-      // "Retake this": no classification, no extraction row. The event is
+      // "Upload this again": no classification, no extraction row. The event is
       // emitted after this request's transaction commits (DomainEvents).
       this.events.record(DOMAIN_EVENTS.DOCUMENT_QUALITY_REJECTED, {
         ...applicationRef(app),
@@ -260,7 +333,7 @@ export class DocumentsService {
     return {
       status: 'PROCESSING' as const,
       ...common,
-      quality: { usable: true, issues: [], confidence: quality.confidence },
+      quality: { usable: true, issues: [], warnings, confidence: quality.confidence },
       poll: `/api/v1/documents/${document.id}`,
     };
   }
@@ -463,12 +536,51 @@ export class DocumentsService {
     });
     const views = rows.map((r) => this.view(r));
     const accepted = officerAccepted(app.current_stage);
+    // A file uploaded to the wrong row (its content is confidently another
+    // type with its own row) is shown, scanned and verified in that row.
+    const rowOf = (v: (typeof views)[number]): string => {
+      const ext = v.extraction;
+      if (!ext || ext.status !== 'COMPLETED') return v.document_type;
+      const cls = ext.classification;
+      return (
+        slotForClassified(
+          v.document_type,
+          { type: cls.type, confidence: cls.confidence },
+          checklist,
+        ) ?? v.document_type
+      );
+    };
+    const ctx = await this.verificationContext(app);
+    // OCR extracts; each document type's rules decide (document-verification.ts).
+    const verifications = new Map<string, Verification | null>();
+    for (const v of views) {
+      if (v.extraction?.status !== 'COMPLETED') continue;
+      const values = Object.fromEntries(v.extraction.fields.map((f) => [f.name, f.value]));
+      verifications.set(v.document_id, verifyDocument(canonicalTypeForSlot(rowOf(v)), values, ctx));
+    }
     const results: Record<string, SlotResult> = {};
     const processedAt: Record<string, string | null> = {};
     const slots = checklist.map((slot) => {
-      const ofSlot = views.filter((v) => v.document_type === slot);
-      const latest = ofSlot.at(-1);
-      results[slot] = slotResult(slot, latest ?? null, accepted);
+      const ofSlot = views.filter((v) => rowOf(v) === slot);
+      const found = ofSlot.at(-1);
+      const movedFrom = found && found.document_type !== slot ? found.document_type : null;
+      // Moved here because it IS this row's type: not a wrong-type upload.
+      const latest =
+        found && movedFrom && found.extraction
+          ? {
+              ...found,
+              extraction: {
+                ...found.extraction,
+                classification: { ...found.extraction.classification, matches_slot: true },
+              },
+            }
+          : found;
+      results[slot] = slotResult(
+        slot,
+        latest ?? null,
+        accepted,
+        latest ? (verifications.get(latest.document_id) ?? null) : null,
+      );
       // As the pipeline's consistency step counts it: the slot's latest completed extraction.
       const done = ofSlot.filter((v) => v.extraction?.status === 'COMPLETED');
       processedAt[slot] = done.at(-1)?.extraction?.processed_at ?? null;
@@ -479,6 +591,10 @@ export class DocumentsService {
         state: latest?.state ?? 'MISSING',
         outcome: results[slot].outcome,
         reasons: results[slot].reasons,
+        review_fields: results[slot].review_fields ?? [],
+        checks: results[slot].checks ?? [],
+        /** The row the file was uploaded to, when it was moved here by content. */
+        moved_from: movedFrom,
       };
     });
     const ready = readiness(
@@ -488,7 +604,12 @@ export class DocumentsService {
       { status: app.document_consistency_status, checked_at: app.document_consistency_checked_at },
       new Date(),
     );
-    return { checklist, views, slots, readiness: ready };
+    // Officers see each document's rule results next to its extracted values.
+    const verified = views.map((v) => ({
+      ...v,
+      verification: verifications.get(v.document_id) ?? null,
+    }));
+    return { checklist, views: verified, slots, readiness: ready };
   }
 
   async list(applicationId: string) {
@@ -543,7 +664,20 @@ export class DocumentsService {
       where: { submitted_application_id: app.id },
       select: { declared: true },
     });
-    const review = [...state.readiness.attention_slots];
+    // Documents never hold an application: unverified ones go to the officer's
+    // scrutiny with what was read and the fields to check flagged.
+    const review = [
+      ...state.readiness.attention_slots,
+      ...state.readiness.officer_review_slots.map((slot) => {
+        // slot:fields to check;!failed rules (the flags the INO sees on the queue item).
+        const fields = state.readiness.review_fields[slot] ?? [];
+        const flags = state.readiness.flags[slot] ?? [];
+        return (
+          (fields.length > 0 ? `${slot}:${fields.join(',')}` : slot) +
+          (flags.length > 0 ? `!${flags.join(',')}` : '')
+        );
+      }),
+    ];
     if (!state.readiness.verified && review.length === 0) review.push('document_consistency');
     const gate = await this.workflow.runAutomatic(app.id, draft?.declared ?? {}, review);
     if (gate && gate.routed_to !== 'DEFECTIVE') {
@@ -670,9 +804,11 @@ export class DocumentsService {
     });
     if (!row) throw new AppError(ErrorCode.NOT_FOUND);
     const ext = row.extractions[0];
-    if (!ext || ext.status !== 'COMPLETED' || ext.review_status !== 'NEEDS_REVIEW') {
+    // Rule verification can flag an extraction OCR auto-accepted (income above
+    // the ceiling, another category): the officer confirms or corrects either.
+    if (!ext || ext.status !== 'COMPLETED' || ext.review_status === 'OFFICER_CONFIRMED') {
       throw new AppError(ErrorCode.CONFLICT, {
-        message: 'Only a completed extraction that needs review can be confirmed.',
+        message: 'Only a completed extraction not yet confirmed by an officer can be confirmed.',
         details: { reason: 'not_awaiting_review', review_status: ext?.review_status ?? null },
       });
     }
@@ -746,7 +882,7 @@ export class DocumentsService {
             ? 'FAILED'
             : (ext.review_status ?? 'COMPLETED');
     const quality = row.quality_result as {
-      value?: { issues?: string[] };
+      value?: { issues?: string[]; warnings?: string[] };
       confidence?: number;
     } | null;
 
@@ -806,6 +942,7 @@ export class DocumentsService {
         : {
             usable: row.quality_usable,
             issues: quality?.value?.issues ?? [],
+            warnings: quality?.value?.warnings ?? qualityVerdict(quality?.value ?? {}).warnings,
             confidence: quality?.confidence ?? null,
           },
       verification_status: row.verification_status,

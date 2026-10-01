@@ -19,10 +19,15 @@ type Form = {
   domicile_district: string;
   annual_income: string;
   caste_cert_number: string;
-  bank_account: string;
+  ifsc: string;
+  account_number: string;
   is_disabled: boolean;
   disability_percentage: string;
 };
+
+/** IFSC: 4 letters, a zero, 6 letters or digits. Account number: 9-18 digits. */
+const IFSC = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+const ACCOUNT = /^\d{9,18}$/;
 
 const EMPTY: Form = {
   email: "",
@@ -37,7 +42,8 @@ const EMPTY: Form = {
   domicile_district: "",
   annual_income: "",
   caste_cert_number: "",
-  bank_account: "",
+  ifsc: "",
+  account_number: "",
   is_disabled: false,
   disability_percentage: "",
 };
@@ -49,10 +55,18 @@ export default function RegisterScreen() {
   const [form, setForm] = useState<Form>(EMPTY);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [touched, setTouched] = useState({ ifsc: false, account: false });
+  const ifscBad = !IFSC.test(form.ifsc);
+  const accountBad = !ACCOUNT.test(form.account_number);
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm((f) => ({ ...f, [key]: value }));
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (ifscBad || accountBad) {
+      setTouched({ ifsc: true, account: true });
+      document.getElementById(ifscBad ? "reg-ifsc" : "reg-account")?.focus();
+      return;
+    }
     setBusy(true);
     setError(null);
     const dto: RegisterDto = {
@@ -64,7 +78,7 @@ export default function RegisterScreen() {
       domicile_state: form.domicile_state.trim(),
       caste_cert_number: form.caste_cert_number.trim(),
       annual_income: Number(form.annual_income || 0).toFixed(2),
-      bank_account: form.bank_account.trim(),
+      bank_account: `${form.ifsc}:${form.account_number}`, // stored as "IFSC:account", as for the seeded applicants
       preferred_language: lang,
       ...(form.domicile_district.trim() ? { domicile_district: form.domicile_district.trim() } : {}),
       ...(form.phone.trim() ? { phone: form.phone.trim() } : {}),
@@ -130,7 +144,20 @@ export default function RegisterScreen() {
               <label>{t("field.annualIncome")}<input required inputMode="numeric" value={form.annual_income} onChange={(e) => set("annual_income", e.target.value.replace(/\D/g, ""))} /></label>
               <label>{t("field.casteCert")}<input required value={form.caste_cert_number} onChange={(e) => set("caste_cert_number", e.target.value)} /></label>
             </div>
-            <label>{t("field.bankAccount")}<input required autoComplete="off" value={form.bank_account} onChange={(e) => set("bank_account", e.target.value)} /></label>
+            <div className="field-row">
+              <label htmlFor="reg-ifsc">{t("field.ifsc")}
+                <input id="reg-ifsc" required autoComplete="off" spellCheck={false} maxLength={11} value={form.ifsc}
+                  aria-invalid={touched.ifsc && ifscBad} aria-describedby={touched.ifsc && ifscBad ? "reg-ifsc-error" : "reg-ifsc-hint"}
+                  onChange={(e) => set("ifsc", e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} onBlur={() => setTouched((x) => ({ ...x, ifsc: true }))} />
+                {touched.ifsc && ifscBad ? <span className="field-error" id="reg-ifsc-error">{t("field.ifscError")}</span> : <span className="hint" id="reg-ifsc-hint">{t("field.ifscHint")}</span>}
+              </label>
+              <label htmlFor="reg-account">{t("field.accountNumber")}
+                <input id="reg-account" required autoComplete="off" inputMode="numeric" maxLength={18} value={form.account_number}
+                  aria-invalid={touched.account && accountBad} aria-describedby={touched.account && accountBad ? "reg-account-error" : "reg-account-hint"}
+                  onChange={(e) => set("account_number", e.target.value.replace(/\D/g, ""))} onBlur={() => setTouched((x) => ({ ...x, account: true }))} />
+                {touched.account && accountBad ? <span className="field-error" id="reg-account-error">{t("field.accountNumberError")}</span> : <span className="hint" id="reg-account-hint">{t("field.accountNumberHint")}</span>}
+              </label>
+            </div>
             <div className="field-row">
               <label>{t("field.isDisabled")}
                 <select value={form.is_disabled ? "yes" : "no"} onChange={(e) => set("is_disabled", e.target.value === "yes")}>

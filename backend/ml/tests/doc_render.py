@@ -16,6 +16,8 @@ import base64
 import cv2
 import numpy as np
 
+from app.utils.pdf import PDF_RASTER_DPI
+
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 SCALE = 0.8
 THICKNESS = 2
@@ -95,7 +97,7 @@ def true_region(words: list[dict], *texts: str) -> tuple[int, int, int, int]:
     raise AssertionError(f"{texts} not drawn")
 
 
-def render_pdf(text: str, extra_pages: list[str] | None = None, dpi: int = 200) -> tuple[bytes, list[dict]]:
+def render_pdf(text: str, extra_pages: list[str] | None = None, dpi: int = PDF_RASTER_DPI) -> tuple[bytes, list[dict]]:
     """
     Phase 13E: render_document_layout's page(s) as a PDF whose page size is
     the image at `dpi`, so rasterising page 1 at the same dpi gives back the

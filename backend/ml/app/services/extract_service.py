@@ -1,4 +1,5 @@
 import re
+import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
@@ -7,7 +8,9 @@ from app.config import settings
 from app.errors import AppError, ErrorCode
 from app.services.classify_service import CANONICAL_DOCUMENT_TYPES, classify_document
 from app.services.field_boxes import field_boxes
-from app.services.ocr_service import extract_text_and_words
+from app.services.ocr_repair import repair_ocr_text
+from app.services.layout_extract import EXTRACTORS as LAYOUT_EXTRACTORS, Layout
+from app.services.ocr_service import ocr_page, ocr_variants
 
 STOP_NAME_WORDS = {
     "is", "are", "was", "belongs", "belonging", "currently", "affected", "bearing",
@@ -715,7 +718,127 @@ class OfferLetterExtractor(FieldExtractor):
             values["designation"] = desig_match.group(1).strip()
             confs["designation"] = round(min(0.90, max(0.60, ocr_conf * 0.91)), 2)
 
+        # An admission offer / seat allotment letter has no salary, position or
+        # joining date: those job-offer fields are not "missing", they do not apply.
+        if ADMISSION_LETTER.search(text):
+            for key in ("annual_ctc", "joining_date", "designation"):
+                if values[key] is None:
+                    del values[key]
+                    del confs[key]
+
         return values, confs
+
+
+ADMISSION_LETTER = re.compile(
+    r"admission\s+letter|(?:offer|letter|confirmation)\s+of\s+admission|provisional(?:ly)?\s+admi|"
+    r"allotment\s+(?:letter|order)|seat\s+allotment|provisional\s+allotment|allotted\s+(?:a\s+)?seat|"
+    r"selected\s+for\s+admission|admitted\s+(?:to|in|into)\s+the",
+    re.IGNORECASE,
+)
+
+
+# Confidence penalties: a value needing OCR-noise repair, or read only from a
+# preprocessed / rotated pass, is a little less certain than a clean first read.
+REPAIRED_TEXT_FACTOR = 0.92
+LATER_PASS_FACTOR = 0.95
+
+
+def _found(values: Dict[str, Any]) -> int:
+    return sum(1 for v in values.values() if v not in (None, "", []))
+
+
+# The value each rule-verified type cannot do without (api document-verification.ts).
+MANDATORY_FIELD = {
+    "INCOME_CERTIFICATE": "family_income_annual",
+    "CASTE_CERTIFICATE": "category",
+    "MARKSHEET": "percentage",
+    "BONAFIDE": "institution_name",
+}
+
+
+def _pass_fields(
+    variant: np.ndarray, extractor: "FieldExtractor", doc_type: Optional[str]
+) -> Tuple[List[Tuple[Dict[str, Any], Dict[str, float], float]], str, List[Dict[str, Any]]]:
+    """One OCR pass: [(values, confidences, penalty)], the pass text and its words."""
+    page = ocr_page(variant)
+    text, ocr_conf, words = page.text, page.confidence, page.words
+    if not text:
+        return [], "", []
+    if doc_type in LAYOUT_EXTRACTORS:
+        v, c = LAYOUT_EXTRACTORS[doc_type](Layout(page))
+        return [(v, c, 1.0)], text, words
+    reads = []
+    for candidate, penalty in ((text, 1.0), (repair_ocr_text(text), REPAIRED_TEXT_FACTOR)):
+        v, c = extractor.extract(candidate, ocr_conf)
+        reads.append((v, c, penalty))
+    return reads, text, words
+
+
+def _done(values: Dict[str, Any], confs: Dict[str, float], doc_type: Optional[str]) -> bool:
+    good = settings.ocr_good_enough_confidence
+    key = MANDATORY_FIELD.get(doc_type or "")
+    if key:
+        found = _found(values)
+        return values.get(key) not in (None, "", []) and confs.get(key, 0.0) >= good and found * 4 >= len(values) * 3
+    return bool(values) and all(values[k] not in (None, "", []) and confs[k] >= good for k in values)
+
+
+def read_fields_best_effort(
+    image: np.ndarray, extractor: "FieldExtractor", doc_type: Optional[str] = None
+) -> Tuple[Dict[str, Any], Dict[str, float], str, List[Dict[str, Any]]]:
+    """
+    Runs OCR passes (ocr_variants: plain, upright, enhanced, binarized, then
+    quarter turns) until the fields are read confidently, the pass budget is
+    spent, or the time budget runs out; per field the most confident value of
+    any pass wins. Rule-verified types are read layout-aware (layout_extract).
+    Returns merged values and confidences, the text of the most productive
+    pass, and the first pass's words (the only ones in the stored file's pixel
+    grid, for field_boxes).
+    """
+    started = time.monotonic()
+    values, confs = extractor.extract("", 0.0)
+    if doc_type in LAYOUT_EXTRACTORS:
+        values = {k: None for k in values}
+        confs = {k: 0.0 for k in values}
+    mandatory = MANDATORY_FIELD.get(doc_type or "")
+    best_text, best_score, first_words = "", -1.0, []
+    applicable: set = set()
+    for index, (label, variant) in enumerate(ocr_variants(image)):
+        if index >= settings.ocr_max_passes:
+            break
+        # Quarter turns only help a page that is still mostly unread.
+        if label.startswith("rotated"):
+            if mandatory and values.get(mandatory) not in (None, "", []):
+                break
+            if not mandatory and _found(values) * 2 >= max(len(values), 1):
+                break
+        reads, text, words = _pass_fields(variant, extractor, doc_type)
+        if index == 0:
+            first_words = words
+        factor = 1.0 if index == 0 else LATER_PASS_FACTOR
+        pass_score = 0.0
+        for v, c, penalty in reads:
+            for k, val in v.items():
+                if val in (None, "", []):
+                    continue
+                conf = round(c.get(k, 0.0) * factor * penalty, 2)
+                pass_score += conf
+                if values.get(k) in (None, "", []) or conf > confs.get(k, 0.0):
+                    values[k], confs[k] = val, conf
+        if text and pass_score > best_score:
+            best_text, best_score = text, pass_score
+            # The fields that apply are those of the most productive reading.
+            applicable = {k for v, _, _ in reads for k in v}
+        if _done(values, confs, doc_type):
+            break
+        if time.monotonic() - started > settings.ocr_time_budget_s:
+            break
+    if applicable:
+        # Fields the extractor left out for this document (an admission letter
+        # has no salary) are not reported as missing.
+        values = {k: v for k, v in values.items() if k in applicable}
+        confs = {k: v for k, v in confs.items() if k in applicable}
+    return values, confs, best_text, first_words
 
 
 EXTRACTORS: Dict[str, FieldExtractor] = {
@@ -768,26 +891,6 @@ def extract_document_fields(
         if doc_type_conf < settings.classify_min_confidence:
             low_confidence_auto_classification = True
 
-    # 2. Extract OCR text
-    raw_text, ocr_conf, words = extract_text_and_words(image)
-    if not raw_text:
-        # Empty OCR text -> empty values with 0.0 confidence
-        extractor = EXTRACTORS.get(resolved_type)
-        if extractor:
-            empty_vals, empty_confs = extractor.extract("", 0.0)
-        else:
-            empty_vals, empty_confs = {}, {}
-        return {
-            "value": empty_vals,
-            "confidence": empty_confs,
-            "raw_text": "",
-            "document_type": resolved_type,
-            "document_type_confidence": round(doc_type_conf, 2),
-            "low_confidence_auto_classification": low_confidence_auto_classification,
-            "boxes": {k: None for k in empty_vals},
-        }
-
-    # 3. Extract fields using specialized template extractor
     extractor = EXTRACTORS.get(resolved_type)
     if not extractor:
         raise AppError(
@@ -796,7 +899,20 @@ def extract_document_fields(
             status_code=400,
         )
 
-    values, confidences = extractor.extract(raw_text, ocr_conf)
+    # 2-3. Best-effort OCR: several passes, each read raw and noise-repaired;
+    # per field the most confident value wins. Whatever is read is kept, however
+    # partial or uncertain - the api decides what an officer must check.
+    values, confidences, raw_text, words = read_fields_best_effort(image, extractor, resolved_type)
+    if not raw_text:
+        return {
+            "value": values,
+            "confidence": confidences,
+            "raw_text": "",
+            "document_type": resolved_type,
+            "document_type_confidence": round(doc_type_conf, 2),
+            "low_confidence_auto_classification": low_confidence_auto_classification,
+            "boxes": {k: None for k in values},
+        }
 
     # 4. Bayesian continuous joint probability scaling:
     # When document_type is auto-classified, P(Field is valid) = P(Field | Type) * P(Type)

@@ -196,6 +196,8 @@ export type DocumentState = 'MISSING' | 'QUALITY_REJECTED' | 'PROCESSING' | 'FAI
 export interface DocumentQuality {
   usable: boolean | null;
   issues: string[];
+  /** Findings that never block the scan (blur, crop, low resolution). */
+  warnings?: string[];
   confidence: number | null;
 }
 export interface UploadResult {
@@ -217,14 +219,28 @@ export interface DocumentView {
   state: DocumentState;
   quality: DocumentQuality | null;
   verification_status: string | null;
+  /** What the scan read, each field with its confidence (null value: not read). */
+  extraction?: { fields: Array<{ name: string; value: unknown; confidence: number | null }> } | null;
 }
 /** GET /documents/{id} (polling): the list item plus the ML mode. */
 export type DocumentDetail = DocumentView & { ml_mode: string; mock_notice?: string };
 /** One row's result: scanned automatically on upload. */
-export type SlotOutcome = 'MISSING' | 'SCANNING' | 'VERIFIED' | 'NEEDS_ATTENTION';
+export type SlotOutcome = 'MISSING' | 'SCANNING' | 'VERIFIED' | 'RECEIVED_FLAGGED' | 'RECEIVED_REVIEW' | 'RECEIVED_MANUAL' | 'NEEDS_ATTENTION';
+/** One verification rule's result, with the compared values (document type rules). */
+export interface RuleCheck {
+  rule: string;
+  field: string;
+  mandatory: boolean;
+  status: 'PASS' | 'FAIL' | 'NOT_READ' | 'UNAVAILABLE' | 'SKIPPED';
+  extracted: string | number | null;
+  expected: string | number | null;
+}
 export type AttentionReason =
   | { code: 'quality'; issues: string[] }
   | { code: 'unreadable' }
+  | { code: 'not_read' }
+  | { code: 'missing_fields'; fields: string[] }
+  | { code: 'rule_failed'; rule: string; field: string; extracted: string | number | null; expected: string | number | null }
   | { code: 'wrong_type'; detected: string | null }
   | { code: 'type_uncertain' }
   | { code: 'manual_check' }
@@ -234,6 +250,10 @@ export interface DocumentReadiness {
   required_slots: string[];
   pending_slots: string[];
   attention_slots: string[];
+  /** Received but not verified: an officer checks them; they never hold the application. */
+  officer_review_slots?: string[];
+  review_fields?: Record<string, string[]>;
+  flags?: Record<string, string[]>;
   consistency: string | null;
   consistency_pending: boolean;
   ready: boolean;
@@ -246,6 +266,11 @@ export interface DocumentSlot {
   state: DocumentState;
   outcome: SlotOutcome;
   reasons: AttentionReason[];
+  review_fields?: string[];
+  /** Rule results: what was matched (verified) or what an officer reviews (flagged). */
+  checks?: RuleCheck[];
+  /** The row the file was uploaded to, when its content showed it belongs in this one. */
+  moved_from?: string | null;
 }
 export interface ApplicationDocuments {
   application_id: string;

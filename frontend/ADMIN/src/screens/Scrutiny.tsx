@@ -60,6 +60,12 @@ function display(value: unknown): string {
  * Why the document was routed for review: the backend's routeByConfidence()
  * rule, recomputed here because the reasons are not returned (BACKEND_REQUESTS R4).
  */
+/** A compared value: amounts in Indian grouping, the rest as read. */
+function ruleValue(v: string | number | null): string {
+  if (v === null) return "–";
+  return typeof v === "number" ? v.toLocaleString("en-IN") : v;
+}
+
 function routingReasons(i18n: I18n, doc: DocumentView): string[] {
   const ext = doc.extraction;
   if (!ext) return [];
@@ -246,7 +252,8 @@ function CaseView({ id, position, onPrev, onNext, onChanged, canAct }: { id: str
       </section>
     </div>
     <HistoryTimeline applicationId={app.id} refreshKey={`${app.current_stage}|${app.stage_entered_at}`} />
-    {canAct && <DecisionPanel app={app} docs={docs} onChanged={refresh} />}
+    {/* MINISTRY_APPROVED has no verify/reject/defect transition (backend workflow: DISBURSE only, via selection and disbursement). */}
+    {canAct && app.current_stage === "MINISTRY_APPROVED" ? <Note tone="info">{t("scrutiny.ministryApproved")}</Note> : canAct && <DecisionPanel app={app} docs={docs} onChanged={refresh} />}
   </section>;
 }
 
@@ -278,6 +285,9 @@ function Extraction({ doc, canAct, onChanged }: { doc: DocumentView; canAct: boo
   const reasons = routingReasons(i18n, doc);
   const mm = mismatches(doc);
   const needsReview = ext.review_status === "NEEDS_REVIEW";
+  // Editable until an officer confirms: rules can flag values OCR auto-accepted.
+  const editable = ext.review_status !== "OFFICER_CONFIRMED";
+  const checks = doc.verification?.checks ?? [];
   const corrections: Record<string, string | number | boolean> = {};
   for (const f of fields) {
     const v = edits[f.name];
@@ -285,7 +295,7 @@ function Extraction({ doc, canAct, onChanged }: { doc: DocumentView; canAct: boo
     corrections[f.name] = typeof f.value === "number" && v.trim() !== "" && !Number.isNaN(Number(v)) ? Number(v) : typeof f.value === "boolean" ? v === "true" : v;
   }
   const corrected = Object.keys(corrections).length > 0;
-  const canConfirm = canAct && needsReview && (!corrected || reasonOk(remarks));
+  const canConfirm = canAct && editable && (!corrected || reasonOk(remarks));
 
   const confirm = () => void runner.run(async () => {
     await ep.confirmDocument(doc.document_id, { corrections: corrected ? corrections : undefined, remarks: remarks.trim() || undefined });
@@ -301,15 +311,27 @@ function Extraction({ doc, canAct, onChanged }: { doc: DocumentView; canAct: boo
         <small>{t("scrutiny.lowest", { t: pct(ext.review_threshold) })}</small></div></div>
     </div>
     {reasons.length > 0 && <div className="routing-reason"><div className="warning-icon"><Icon name="alert" /></div><div><strong>{t("scrutiny.whyRouted")}</strong>{reasons.map((r) => <span key={r}>{r}</span>)}<span className="muted">{t("scrutiny.whyRoutedNote")}</span></div></div>}
+    {checks.filter((c) => c.status === "FAIL").map((c) => (
+      <div className="routing-reason" key={`flag-${c.rule}`}><div className="warning-icon"><Icon name="alert" /></div><div>
+        <strong>{i18n.tk(`docRuleFail.${c.rule}`, i18n.tk(`docRule.${c.rule}`, c.rule), { doc: ruleValue(c.extracted), app: ruleValue(c.expected) })}</strong>
+      </div></div>
+    ))}
+    {checks.length > 0 && <div className="form-section"><div className="form-section-title">{t("scrutiny.rules")} <Badge tone={doc.verification?.result === "VERIFIED" ? "success" : doc.verification?.result === "FLAGGED" ? "danger" : "warning"}>{i18n.tk(`verification.${doc.verification?.result}`, doc.verification?.result ?? "")}</Badge></div>
+      <div className="table-wrap"><table><thead><tr><th>{t("scrutiny.ruleCol")}</th><th>{t("scrutiny.ruleResult")}</th><th>{t("scrutiny.ruleDoc")}</th><th>{t("scrutiny.ruleApp")}</th></tr></thead>
+        <tbody>{checks.map((c) => <tr key={c.rule}>
+          <td>{i18n.tk(`docRule.${c.rule}`, c.rule)}{c.mandatory ? "" : <span className="muted"> · {t("scrutiny.ruleOptional")}</span>}</td>
+          <td><Badge tone={c.status === "PASS" ? "success" : c.status === "FAIL" ? "danger" : c.status === "SKIPPED" ? "neutral" : "warning"}>{i18n.tk(`ruleStatus.${c.status}`, c.status)}</Badge></td>
+          <td className="num">{ruleValue(c.extracted)}</td><td className="num">{ruleValue(c.expected)}</td></tr>)}</tbody></table></div>
+    </div>}
     <div className="form-section"><div className="form-section-title">{t("scrutiny.fields")}</div>
       <div className="fields-grid">
-        {fields.map((f) => <FieldEditor key={f.name} field={f} editable={canAct && needsReview} value={edits[f.name] ?? display(f.value)} onChange={(v) => setEdits((e) => ({ ...e, [f.name]: v }))} />)}
+        {fields.map((f) => <FieldEditor key={f.name} field={f} editable={canAct && editable} value={edits[f.name] ?? display(f.value)} onChange={(v) => setEdits((e) => ({ ...e, [f.name]: v }))} />)}
         {fields.length === 0 && <div className="muted">{t("scrutiny.noFields")}</div>}
       </div>
     </div>
     {mm.length > 0 && <div className="comparison"><div className="comparison-head"><span>{t("scrutiny.mismatchHead")}</span></div>
       <div className="compare-grid">{mm.map((m) => <div key={m.field}><small>{m.source === "declared" ? t("scrutiny.mmDeclared") : t("scrutiny.mmRecorded")}</small><strong>{m.field}</strong><span className="source-line"><span className="orange-dot" /> {t("scrutiny.mmNote")}</span></div>)}</div></div>}
-    {canAct && needsReview && !done && <div className="officer-note">
+    {canAct && editable && !done && <div className="officer-note">
       <ReasonField label={corrected ? t("scrutiny.correctReason") : t("scrutiny.confirmNote")} value={remarks} onChange={setRemarks} optional={!corrected} />
       <ErrorNote error={runner.error} />
       <div className="decision-row"><Action variant="primary" icon="check" disabled={!canConfirm || runner.busy} onClick={confirm}>{corrected ? t("scrutiny.saveCorrections", { n: Object.keys(corrections).length }) : t("scrutiny.confirmValues")}</Action></div>

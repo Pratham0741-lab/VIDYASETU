@@ -29,7 +29,7 @@ class ClassifyResponse(BaseModel):
 
 
 @router.post("/classify", response_model=ClassifyResponse)
-async def classify_document_endpoint(payload: ClassifyRequest):
+def classify_document_endpoint(payload: ClassifyRequest):
     image, raw_bytes = decode_base64_image_with_bytes(payload.image_base64)
     result = classify_document(image, raw_bytes)
     return result

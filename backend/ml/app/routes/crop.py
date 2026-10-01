@@ -53,7 +53,7 @@ _UPRIGHT = {
 
 
 @router.post("/crop", response_model=CropResponse)
-async def crop_endpoint(payload: CropRequest):
+def crop_endpoint(payload: CropRequest):
     decoded, raw = decode_base64_image_with_bytes(payload.image_base64)
     # Phase 13E: a PDF's boxes are in its page-1 raster - crop that raster.
     pdf = is_pdf(raw)

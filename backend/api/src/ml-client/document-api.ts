@@ -15,7 +15,8 @@
  * served by MockMlService from documented fixtures.
  */
 export interface QualityResult {
-  value: { usable: boolean; issues: string[] };
+  /** usable: readable as a file at all; warnings: findings that never block OCR. */
+  value: { usable: boolean; issues: string[]; warnings?: string[] };
   confidence: number;
   details: Record<string, unknown>;
 }

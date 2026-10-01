@@ -57,8 +57,10 @@ async def test_quality_blurred_image():
         resp = await client.post("/v1/documents/quality", json={"image_base64": blurred_b64})
         assert resp.status_code == 200
         data = resp.json()
-        assert data["value"]["usable"] is False
+        # A warning, never a rejection: OCR still runs on it.
+        assert data["value"]["usable"] is True
         assert "blurred" in data["value"]["issues"]
+        assert "blurred" in data["value"]["warnings"]
         # Clear failure: high certainty that image is indeed defective
         assert data["confidence"] >= 0.85
         assert data["details"]["blur_score"] < 50.0
@@ -85,8 +87,10 @@ async def test_quality_low_resolution():
         resp = await client.post("/v1/documents/quality", json={"image_base64": low_res_b64})
         assert resp.status_code == 200
         data = resp.json()
-        assert data["value"]["usable"] is False
+        # A warning, never a rejection: OCR still runs on it.
+        assert data["value"]["usable"] is True
         assert "low_resolution" in data["value"]["issues"]
+        assert "low_resolution" in data["value"]["warnings"]
         # High certainty of defect
         assert data["confidence"] >= 0.80
 
@@ -99,8 +103,10 @@ async def test_quality_glare_image():
         resp = await client.post("/v1/documents/quality", json={"image_base64": glare_b64})
         assert resp.status_code == 200
         data = resp.json()
-        assert data["value"]["usable"] is False
+        # A warning, never a rejection: OCR still runs on it.
+        assert data["value"]["usable"] is True
         assert "glare_detected" in data["value"]["issues"]
+        assert "glare_detected" in data["value"]["warnings"]
         assert data["confidence"] >= 0.80
 
 
@@ -120,7 +126,22 @@ async def test_quality_garbage_image():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post("/v1/documents/quality", json={"image_base64": "ThisIsNotValidBase64Data!*#&@"})
-        assert resp.status_code == 400
+        # Unreadable as a file: a clean "not usable" verdict (upload again), not an error.
+        assert resp.status_code == 200
         data = resp.json()
-        assert data["code"] == "INVALID_IMAGE"
-        assert "requestId" in data
+        assert data["value"]["usable"] is False
+        assert data["value"]["issues"] == ["unreadable_file"]
+
+
+@pytest.mark.asyncio
+async def test_quality_blank_page_is_the_only_content_rejection():
+    blank = encode_image_to_base64(np.full((1200, 900, 3), 240, dtype=np.uint8))
+    dark = create_test_image(width=800, height=600, dark=True)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        data = (await client.post("/v1/documents/quality", json={"image_base64": blank})).json()
+        assert data["value"]["usable"] is False
+        assert "blank_page" in data["value"]["issues"]
+        data = (await client.post("/v1/documents/quality", json={"image_base64": dark})).json()
+        assert data["value"]["usable"] is True
+        assert "blank_page" not in data["value"]["issues"]

@@ -2,11 +2,12 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type React
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError } from "../api/client";
 import * as ep from "../api/endpoints";
-import type { ApplicationDocuments, AttentionReason, CreatedApplication, DocumentsComplete, Draft, FormField, SlotOutcome } from "../api/responses";
+import type { ApplicationDocuments, AttentionReason, CreatedApplication, DocumentsComplete, DocumentView, Draft, FormField, RuleCheck, SlotOutcome } from "../api/responses";
 import type { CreateApplicationDto } from "../api/types";
 import { useMyApplications } from "../applications";
 import { useAuth } from "../auth/AuthProvider";
 import { useI18n, type MessageKey } from "../i18n";
+import { errorText } from "../i18n/errors";
 import { categoryLabel } from "../i18n/labels";
 import { RECORDED_FIELDS, useSchemeCatalogue, type SchemeEntry } from "../schemes";
 import { Button, Card, ErrorNote, Icon, InfoNote, ScreenTitle, Tag, type Tone, type IconName } from "../ui";
@@ -107,10 +108,10 @@ function WizardSteps({ active }: { active: number }) {
   );
 }
 
-const STATUS_ICON: Partial<Record<SlotOutcome, IconName>> = { SCANNING: "loader", VERIFIED: "check", NEEDS_ATTENTION: "warning" };
+const STATUS_ICON: Partial<Record<SlotOutcome, IconName>> = { SCANNING: "loader", VERIFIED: "check", RECEIVED_FLAGGED: "clock", RECEIVED_REVIEW: "clock", RECEIVED_MANUAL: "clock", NEEDS_ATTENTION: "warning" };
 
-/** One checklist row: title, and after an upload a status icon and pill (with the reason when it needs attention); one file action. */
-function UploadRow({ title, file, issues, outcome, tag, action }: { title: string; file?: string; issues: string[]; outcome: SlotOutcome; tag: { tone: Tone; text: string }; action: ReactNode }) {
+/** One checklist row: title and status pill (reason when it must be uploaded again, neutral notes when an officer checks it); after an upload a status icon and a Replace link. */
+function UploadRow({ title, file, issues, notes = [], outcome, tag, action }: { title: string; file?: string; issues: string[]; notes?: string[]; outcome: SlotOutcome; tag: { tone: Tone; text: string }; action: ReactNode }) {
   const icon = STATUS_ICON[outcome];
   return (
     <li className={`upload-row is-${outcome.toLowerCase()} ${issues.length ? "has-issue" : ""}`}>
@@ -118,10 +119,11 @@ function UploadRow({ title, file, issues, outcome, tag, action }: { title: strin
       <div className="upload-copy">
         <strong>{title}</strong>
         {file && <span className="upload-file num">{file}</span>}
-        {outcome !== "MISSING" && <Tag tone={tag.tone}>{tag.text}</Tag>}
+        <Tag tone={tag.tone}>{tag.text}</Tag>
         {issues.map((issue) => <p className="upload-issue" key={issue}><Icon name="warning" />{issue}</p>)}
+        {notes.map((note) => <p className="upload-note" key={note}><Icon name="info" />{note}</p>)}
       </div>
-      <div className="upload-action">{action}</div>
+      {action && <div className="upload-action">{action}</div>}
     </li>
   );
 }
@@ -365,7 +367,10 @@ export default function ApplicationScreen() {
   );
 }
 
-const OUTCOME_TONE: Record<SlotOutcome, Tone> = { MISSING: "gray", SCANNING: "blue", VERIFIED: "green", NEEDS_ATTENTION: "amber" };
+const OUTCOME_TONE: Record<SlotOutcome, Tone> = { MISSING: "gray", SCANNING: "blue", VERIFIED: "green", RECEIVED_FLAGGED: "blue", RECEIVED_REVIEW: "blue", RECEIVED_MANUAL: "blue", NEEDS_ATTENTION: "amber" };
+const RECEIVED: ReadonlySet<SlotOutcome> = new Set(["RECEIVED_FLAGGED", "RECEIVED_REVIEW", "RECEIVED_MANUAL"]);
+/** Rules worth telling the applicant about when they pass ("Income matches the scheme limit."). */
+const SHOWN_PASSES = new Set(["income_ceiling", "income_entered", "category_match", "name_match", "marks_minimum", "marks_entered", "institution_match", "academic_year_current"]);
 
 function DocumentsStep({ applicationId, stage, gate }: { applicationId: string; stage: string; gate: CreatedApplication["eligibility_gate"] }) {
   const i18n = useI18n();
@@ -374,7 +379,9 @@ function DocumentsStep({ applicationId, stage, gate }: { applicationId: string; 
   const [docs, setDocs] = useState<ApplicationDocuments | null>(null);
   const [moved, setMoved] = useState<DocumentsComplete | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [fileErrors, setFileErrors] = useState<string[]>([]);
   const [status, setStatus] = useState("");
   const inputs = useRef<Record<string, HTMLInputElement | null>>({});
   const current = docs?.current_stage ?? stage;
@@ -385,12 +392,35 @@ function DocumentsStep({ applicationId, stage, gate }: { applicationId: string; 
     switch (r.code) {
       case "quality": return t("apply.retake", { issues: r.issues.map((x) => tk(`quality.${x}`, x.replace(/_/g, " "))).join(", ") || t("quality.unknown") });
       case "unreadable": return t("apply.unreadable");
+      case "not_read": return t("doc.reason.not_read");
+      case "missing_fields": return t("doc.reason.missing_fields", { fields: fields(r.fields) });
+      case "rule_failed": return checkText(r.rule, "fail", r.extracted, r.expected);
       case "wrong_type": return t("doc.reason.wrong_type", { type: r.detected ? tk(`docType.${r.detected}`, r.detected) : "?" });
       case "type_uncertain": return t("doc.reason.type_uncertain");
       case "manual_check": return t("doc.reason.manual_check");
       case "low_confidence": return t("doc.reason.low_confidence", { fields: fields(r.fields) });
       case "profile_mismatch": return t("doc.reason.profile_mismatch", { fields: fields(r.fields) });
     }
+  };
+  /** A compared value as shown: amounts in Indian grouping, ISO dates as dd/mm/yyyy, year starts as 2026-27. */
+  const shownValue = (rule: string, v: string | number | null): string => {
+    if (v === null) return "?";
+    if (typeof v === "number") return rule === "academic_year_current" ? `${v}-${String((v + 1) % 100).padStart(2, "0")}` : v.toLocaleString("en-IN");
+    const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+    return iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : tk(`category.${v}`, v);
+  };
+  const checkText = (rule: string, result: "pass" | "fail", doc: string | number | null, app: string | number | null) =>
+    tk(`doc.check.${rule}.${result}`, rule.replace(/_/g, " "), { doc: shownValue(rule, doc), app: shownValue(rule, app) });
+  /** Verified rows: what was matched. */
+  const matched = (checks: RuleCheck[] | undefined): string[] =>
+    (checks ?? []).filter((c) => c.status === "PASS" && SHOWN_PASSES.has(c.rule)).map((c) => checkText(c.rule, "pass", c.extracted, c.expected));
+
+  /** The values the scan did read, so the applicant sees their document was received and used. */
+  const readSoFar = (view: DocumentView | undefined): string[] => {
+    const read = (view?.extraction?.fields ?? []).filter((f) => f.value !== null && f.value !== "" && typeof f.value !== "object");
+    if (read.length === 0) return [];
+    const values = read.map((f) => `${tk(`docField.${f.name}`, f.name.replace(/_/g, " "))}: ${typeof f.value === "number" ? f.value.toLocaleString("en-IN") : String(f.value)}`);
+    return [t("doc.readSoFar", { values: values.join("; ") })];
   };
 
   // Load; an application still waiting for its documents moves on as soon as they are all in
@@ -427,42 +457,64 @@ function DocumentsStep({ applicationId, stage, gate }: { applicationId: string; 
     load();
   }, [load]);
 
-  const waitForScan = async (documentId: string, slot: string) => {
+  /** Wait until the slot's scan has finished (outcome no longer SCANNING); returns the final list. */
+  const waitForSlot = async (documentId: string, slot: string): Promise<ApplicationDocuments | null> => {
+    let latest: ApplicationDocuments | null = null;
     for (let i = 0; i < POLL_TRIES; i++) {
       await new Promise((r) => setTimeout(r, POLL_MS));
       try {
-        if ((await ep.getDocument(documentId)).state !== "PROCESSING") break;
+        if ((await ep.getDocument(documentId)).state === "PROCESSING") continue;
+        latest = await load();
+        if (latest?.slots.find((s) => s.slot === slot)?.outcome !== "SCANNING") break;
       } catch {
         break;
       }
     }
-    const outcome = (await load())?.slots.find((s) => s.slot === slot)?.outcome;
-    if (outcome) setStatus(t("apply.statusLive", { doc: tk(`slot.${slot}`, slot), status: t(`doc.outcome.${outcome}`) }));
+    return latest;
   };
 
-  // Scanned automatically: upload, then OCR and checks run on the server; the row follows them.
-  const onFile = async (slot: string, file: File | undefined) => {
-    setError(null);
-    if (!file) return;
-    // Size and type are checked by the backend (10 MiB; PDF, JPG, PNG); its 413 / 415 message is shown as returned.
+  const say = (slot: string, key: MessageKey) => setStatus(t("apply.statusLive", { doc: tk(`slot.${slot}`, slot), status: t(key) }));
+
+  /** Upload one file into one row; returns the row's slot view after its scan, or null on an error. */
+  const uploadTo = async (slot: string, file: File) => {
     setUploading(slot);
-    setStatus(t("apply.statusLive", { doc: tk(`slot.${slot}`, slot), status: t("doc.outcome.SCANNING") }));
+    say(slot, "doc.outcome.SCANNING");
     try {
       const res = await ep.uploadDocument(applicationId, slot, file);
-      await load();
-      if (res.status === "PROCESSING") void waitForScan(res.document_id, slot);
+      const after = res.status === "PROCESSING" ? await waitForSlot(res.document_id, slot) : await load();
+      const view = after?.slots.find((s) => s.slot === slot) ?? null;
+      if (view) say(slot, `doc.outcome.${view.outcome}`);
+      return view;
     } catch (e) {
-      setStatus("");
-      setError(e);
+      setFileErrors((list) => [...list, `${file.name}: ${errorText(e, i18n)}`]);
+      return null;
     } finally {
       setUploading(null);
-      const input = inputs.current[slot];
-      if (input) input.value = "";
+    }
+  };
+
+  /** Upload on one row; the same file is also filed under the row's hidden generic twin. */
+  const onRowFile = async (slot: string, file: File | undefined) => {
+    const input = inputs.current[slot];
+    if (input) input.value = "";
+    if (!file || !docs) return;
+    setError(null);
+    setFileErrors([]);
+    setBusy(true);
+    try {
+      const view = await uploadTo(slot, file);
+      const twin = twins.get(slot);
+      if (view && twin) await uploadTo(twin, file);
+    } finally {
+      setBusy(false);
     }
   };
 
   const routed = moved?.eligibility_gate ?? gate;
   const disagree = docs?.readiness.consistency === "INCONSISTENT" || docs?.readiness.consistency === "UNCERTAIN";
+  const disabled = closed || busy;
+  const twins = twinMap(docs?.slots.map((x) => x.slot) ?? []);
+  const hidden = new Set(twins.values());
 
   return (
     <>
@@ -477,26 +529,46 @@ function DocumentsStep({ applicationId, stage, gate }: { applicationId: string; 
       {closed && <div className="alert-danger"><Icon name="warning" /><div><strong>{t("reason.application_closed")}</strong></div></div>}
       {disagree && <div className="alert-danger"><Icon name="warning" /><div><strong>{t("apply.consistencyIssue")}</strong></div></div>}
       <ErrorNote error={error} />
+      {fileErrors.length > 0 && (
+        <div className="alert-danger" role="alert"><Icon name="warning" /><div>{fileErrors.map((m, i) => <p key={i}>{m}</p>)}</div></div>
+      )}
       <p className="sr-only" aria-live="polite">{status}</p>
       {!docs && !error && <p>{t("common.loading")}</p>}
       {docs && docs.slots.length === 0 && <p>{t("common.empty")}</p>}
-      {docs && docs.slots.length > 0 && <p className="hint">{t("apply.fileHint")}</p>}
+      {docs && docs.slots.length > 0 && (
+        <>
+          <p className="hint">{t("apply.fileHint")}</p>
+        </>
+      )}
       <ul className="upload-list">
-        {docs?.slots.map(({ slot, document_id, outcome, reasons }) => {
+        {docs?.slots.filter((x) => !hidden.has(x.slot)).map(({ slot, document_id, outcome, reasons, checks, moved_from }) => {
           const view = docs.documents.find((d) => d.document_id === document_id);
-          const shown: SlotOutcome = uploading === slot ? "SCANNING" : outcome;
+          const twin = docs.slots.find((x) => x.slot === twins.get(slot));
+          const busyHere = uploading === slot || (!!twin && uploading === twin.slot);
+          const merged = twin ? worst(outcome, twin.outcome) : outcome;
+          const shown: SlotOutcome = busyHere ? "SCANNING" : merged;
+          const allReasons = twin && twin.outcome !== "VERIFIED" ? [...reasons, ...twin.reasons] : reasons;
+          const reasonTexts = [...new Set(allReasons.filter((r) => r.code !== "quality" || shown === "NEEDS_ATTENTION").map(reasonText))];
           return (
             <UploadRow
               key={slot}
               title={tk(`slot.${slot}`, slot)}
               file={view ? `${view.file_name} · ${sizeText(view.file_size_bytes)}` : undefined}
-              issues={shown === "NEEDS_ATTENTION" ? reasons.map(reasonText) : []}
+              issues={shown === "NEEDS_ATTENTION" ? reasonTexts : []}
+              notes={[
+                ...(moved_from ? [t("doc.movedHere", { from: tk(`slot.${moved_from}`, moved_from) })] : []),
+                ...(RECEIVED.has(shown) ? [...reasonTexts, ...readSoFar(view)] : shown === "VERIFIED" ? matched(checks) : []),
+              ]}
               outcome={shown}
               tag={{ tone: OUTCOME_TONE[shown], text: t(`doc.outcome.${shown}`) }}
               action={
                 <>
-                  <input ref={(el) => { inputs.current[slot] = el; }} type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" hidden onChange={(e) => onFile(slot, e.target.files?.[0])} />
-                  <Button variant={view ? "ghost" : "blue"} disabled={closed || uploading !== null} onClick={() => inputs.current[slot]?.click()}>{view ? t("apply.replace") : t("apply.chooseFile")}</Button>
+                  <input ref={(el) => { inputs.current[slot] = el; }} type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" hidden onChange={(e) => onRowFile(slot, e.target.files?.[0])} />
+                  {view ? (
+                    <button type="button" className="link-btn" disabled={disabled} onClick={() => inputs.current[slot]?.click()} aria-label={t("apply.replaceNamed", { doc: tk(`slot.${slot}`, slot) })}>{t("apply.replace")}</button>
+                  ) : (
+                    <Button variant="blue" icon="upload" disabled={disabled} onClick={() => inputs.current[slot]?.click()}>{t("apply.chooseFile")}</Button>
+                  )}
                 </>
               }
             />
@@ -506,4 +578,45 @@ function DocumentsStep({ applicationId, stage, gate }: { applicationId: string; 
       <div className="form-actions"><Button onClick={() => navigate(`/dashboard?app=${encodeURIComponent(applicationId)}`)}>{t("apply.toDashboard")} <Icon name="arrow" /></Button></div>
     </>
   );
+}
+
+/**
+ * Canonical document type of a checklist row, by its wording. Mirrors
+ * backend SLOT_DOCUMENT_TYPE (documents/document-types.ts); rows it cannot
+ * place return null and are checked by an officer.
+ */
+const TYPE_WORDS: Array<[string, RegExp]> = [
+  ["INCOME_CERTIFICATE", /income|form-?16/i],
+  ["CASTE_CERTIFICATE", /\bst\b|caste|pvtg|tribe/i],
+  ["BONAFIDE", /bona ?fide/i],
+  ["MARKSHEET", /mark ?sheet|marks|matric|10th|12th/i],
+  ["FEE_RECEIPT", /fee/i],
+  ["BANK_PASSBOOK", /passbook|bank/i],
+  ["DISABILITY_CERT", /disab|divyang/i],
+  ["OFFER_LETTER", /offer/i],
+];
+const NO_TYPE = /domicile|photograph|scorecard|net\b|progress|i20|cas statement|verification|joining|self-certification|dob_certificate/i;
+function slotType(slot: string): string | null {
+  if (NO_TYPE.test(slot)) return null;
+  return TYPE_WORDS.find(([, re]) => re.test(slot.replace(/_/g, " ")))?.[0] ?? null;
+}
+/** Generic checklist keys that repeat a document a scheme-worded row already asks for. */
+const GENERIC = new Set(["income_certificate", "caste_certificate", "marksheet", "bonafide_certificate", "admission_offer_letter"]);
+/**
+ * Visible row -> its hidden generic twin (same document type). The backend
+ * needs a document in both; the applicant sees one row and uploads once.
+ */
+function twinMap(slots: string[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const generic of slots.filter((x) => GENERIC.has(x))) {
+    const type = slotType(generic);
+    const worded = slots.find((x) => !GENERIC.has(x) && !map.has(x) && type !== null && slotType(x) === type);
+    if (worded) map.set(worded, generic);
+  }
+  return map;
+}
+const RANK: Record<SlotOutcome, number> = { NEEDS_ATTENTION: 6, SCANNING: 5, MISSING: 4, RECEIVED_MANUAL: 3, RECEIVED_FLAGGED: 2, RECEIVED_REVIEW: 1, VERIFIED: 0 };
+/** The status to show for a row and its twin: the one that needs the applicant most. */
+function worst(a: SlotOutcome, b: SlotOutcome): SlotOutcome {
+  return RANK[a] >= RANK[b] ? a : b;
 }

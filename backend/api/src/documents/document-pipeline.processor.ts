@@ -18,7 +18,7 @@ import {
   thresholdFor,
 } from './review-routing';
 import { SystemTransactionRunner } from '../database/system-transaction.runner';
-import { canonicalTypeForSlot } from './document-types';
+import { canonicalTypeForSlot, slotForClassified } from './document-types';
 import { compareWithEligibility, EligibilityMismatch } from './eligibility-cross-check';
 
 /** Everything the worker needs; it runs as SYSTEM and cannot read RLS-protected rows. */
@@ -89,10 +89,21 @@ export class DocumentPipelineProcessor {
     const expectedType = canonicalTypeForSlot(job.slot);
     let classification: Awaited<ReturnType<MlClientService['classifyDocument']>>;
     let extraction: Awaited<ReturnType<MlClientService['extractFields']>>;
+    let movedTo: string | null = null;
     try {
       const image = await this.storage.get(job.bucket, job.storageKey);
       classification = await this.ml.classifyDocument(image);
-      extraction = await this.ml.extractFields(image, expectedType);
+      // Uploaded to the wrong row (content confidently another type that has
+      // its own row): read it as what it is; the checklist shows it there.
+      movedTo = slotForClassified(
+        job.slot,
+        { type: classification.value, confidence: classification.confidence },
+        await this.checklistOf(job.schemeVersionId),
+      );
+      extraction = await this.ml.extractFields(
+        image,
+        movedTo ? canonicalTypeForSlot(movedTo) : expectedType,
+      );
     } catch (err) {
       if (!finalAttempt) throw err;
       const code = err instanceof AppError ? err.code : 'INTERNAL_ERROR';
@@ -113,12 +124,12 @@ export class DocumentPipelineProcessor {
       return false;
     }
 
-    const threshold = thresholdFor(this.config.documents.reviewThresholds, job.slot);
+    const threshold = thresholdFor(this.config.documents.reviewThresholds, movedTo ?? job.slot);
     const routing = routeByConfidence(
       extraction.confidence,
       threshold,
       { type: classification.value, confidence: classification.confidence },
-      expectedType,
+      movedTo ? canonicalTypeForSlot(movedTo) : expectedType,
     );
     const { stored, sensitive } = splitSensitive(extraction.value);
     const mismatches = await this.compareWithEligibility(
@@ -195,6 +206,15 @@ export class DocumentPipelineProcessor {
       });
     }
     return true;
+  }
+
+  /** The application's checklist (Phase 3's derivation) from its scheme version. */
+  private async checklistOf(schemeVersionId: string): Promise<string[]> {
+    const version = await this.db.client.schemeVersion.findUnique({
+      where: { id: schemeVersionId },
+      select: { config: true },
+    });
+    return version ? deriveFormSchema(version.config).documents.checklist : [];
   }
 
   /** Phase 7's eligibility cross-check (moved unchanged to eligibility-cross-check.ts). */

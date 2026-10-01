@@ -1,5 +1,6 @@
+import asyncio
 import uuid
-from typing import Callable
+from typing import Callable, Optional
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
@@ -25,3 +26,27 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         # Set header on response
         response.headers["X-Request-ID"] = request_id
         return response
+
+
+class DocumentConcurrencyMiddleware(BaseHTTPMiddleware):
+    """
+    Processes at most `limit` document requests (paths under `prefix`) at a
+    time; the rest wait their turn. OCR uses several CPU threads and up to
+    ~2.5 GB per page, so one document at a time keeps the service inside its
+    memory limit and gives each page the whole CPU. Health checks are not
+    queued.
+    """
+
+    def __init__(self, app, prefix: str, limit: int = 1):
+        super().__init__(app)
+        self.prefix = prefix
+        self.limit = max(1, limit)
+        self._slots: Optional[asyncio.Semaphore] = None
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        if not request.url.path.startswith(self.prefix):
+            return await call_next(request)
+        if self._slots is None:  # created inside the running event loop
+            self._slots = asyncio.Semaphore(self.limit)
+        async with self._slots:
+            return await call_next(request)

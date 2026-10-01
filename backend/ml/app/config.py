@@ -26,6 +26,23 @@ class Settings(BaseSettings):
     # blank margins. Ink = at least this much darker than the local paper.
     ink_contrast_threshold: int = 60
     cut_off_min_runs: int = 2  # separate ink crossings of one border before a side counts as cut
+    # Only a file unreadable as a file is rejected; every issue above is a
+    # warning. Blank page = almost no ink anywhere (fraction of ink pixels).
+    blank_page_max_ink_ratio: float = 0.001
+
+    # OCR engine: "paddle" (PP-OCRv5 mobile, baked into the image) or "tesseract".
+    ocr_engine: str = "paddle"
+    paddle_det_model: str = "PP-OCRv5_mobile_det"
+    # English only for now (Hindi/Marathi: "devanagari_PP-OCRv5_mobile_rec").
+    paddle_rec_model: str = "en_PP-OCRv5_mobile_rec"
+    ocr_cpu_threads: int = 4
+    # Documents processed at once (DocumentConcurrencyMiddleware): one at a time.
+    max_concurrent_documents: int = 1
+
+    # Best-effort OCR (extract_service.read_fields_best_effort)
+    ocr_max_passes: int = 8  # plain, upright (OSD), sharpened, enhanced, binarized, 3 quarter turns
+    ocr_good_enough_confidence: float = 0.80  # every field at least this: stop early
+    ocr_time_budget_s: float = 20.0  # no new pass starts after this
 
     # Classification Thresholds
     classify_min_confidence: float = 0.40

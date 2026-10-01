@@ -36,7 +36,9 @@ function RequireModule({ permission, children }: { permission: Permission; child
 
 function Home() {
   const { me } = useAuth();
-  const first = modulesFor(me?.role)[0];
+  // Reviewers (including the Ministry, which can also author schemes) start on their queue.
+  const modules = modulesFor(me?.role);
+  const first = modules.includes("scrutiny") ? "scrutiny" : modules[0];
   return first ? <Navigate to={`/${first}`} replace /> : null;
 }
 

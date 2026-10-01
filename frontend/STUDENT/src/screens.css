@@ -160,6 +160,9 @@
 .upload-file { color: var(--c-muted); font-size: var(--fs-sm); overflow-wrap: anywhere; }
 .upload-issue { display: flex; gap: var(--sp-2); color: var(--c-warning-text); font-size: var(--fs-sm); font-weight: 600; }
 .upload-issue .icon { margin-top: 1px; }
+/* Neutral: received, an officer checks it (not an error). */
+.upload-note { display: flex; gap: var(--sp-2); color: var(--c-muted); font-size: var(--fs-sm); }
+.upload-note .icon { margin-top: 1px; flex-shrink: 0; }
 @media (max-width: 599px) {
   .upload-row { flex-wrap: wrap; }
   .upload-action { flex: 1 1 100%; }
@@ -230,3 +233,16 @@
 /* ------------------------------------------------ Login, register, consent */
 .auth-grid form > .btn, .auth-grid .form-actions .btn { min-width: 160px; }
 .auth-grid .card > form { margin-top: var(--sp-2); }
+.link-btn { min-height: var(--tap); padding: 0 var(--sp-2); color: var(--c-primary); background: none; border: 0; font-size: var(--fs-sm); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.link-btn:disabled { color: var(--c-muted); cursor: not-allowed; }
+@media (max-width: 599px) { .upload-action .link-btn { width: auto; } }
+
+/* Checklist rows (multi-file upload): one list with dividers, not separate boxes. */
+.upload-list { gap: 0; border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-surface); overflow: hidden; }
+.upload-row { padding: var(--sp-3) var(--sp-4); border: 0; border-radius: 0; border-bottom: 1px solid var(--c-border); background: transparent; }
+.upload-row:last-child { border-bottom: 0; }
+.upload-row.has-issue { background: var(--c-warning-tint); border-color: var(--c-border); }
+.upload-copy { grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: var(--sp-3); }
+.upload-copy > strong { grid-column: 1; }
+.upload-copy > .tag { grid-column: 2; grid-row: 1; justify-self: end; }
+.upload-copy > .upload-file, .upload-copy > .upload-issue, .upload-copy > .upload-note { grid-column: 1 / -1; }

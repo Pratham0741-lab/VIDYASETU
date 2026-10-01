@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import * as ep from "../api/endpoints";
 import type { Application, ApplicationDocuments, ConsentState, HistoryEntry, Notification, Stage } from "../api/responses";
@@ -10,6 +10,9 @@ import { humanise } from "../i18n/labels";
 import { Button, Card, ErrorNote, Icon, ScreenTitle, Tag, type Tone } from "../ui";
 
 /** The review path of the backend workflow (vidyasetu-scrutiny/v1), in order. */
+/** Track page refresh while open (ms). */
+const REFRESH_MS = 30_000;
+
 const PATH: Stage[] = ["SUBMITTED", "INO_VERIFIED", "DNO_VERIFIED", "SNO_VERIFIED", "MINISTRY_APPROVED"];
 
 const STATUS_TONE: Record<string, Tone> = {
@@ -93,26 +96,51 @@ export default function DashboardScreen() {
   const [consents, setConsents] = useState<ConsentState | null>(null);
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const { apps, selected, select, error: appsError } = useMyApplications();
+  const { apps, selected, select, error: appsError, reload } = useMyApplications();
   const [docs, setDocs] = useState<ApplicationDocuments | null>(null);
   const [notes, setNotes] = useState<Notification[] | null>(null);
   const [history, setHistory] = useState<HistoryEntry[] | null>(null);
   const [historyError, setHistoryError] = useState<unknown>(null);
   const [error, setError] = useState<unknown>(null);
+  const shownId = useRef<string | null>(null);
 
+  // Documents and history: refetched when the application or its stage changes
+  // (an officer acted). Cleared to "loading" only when another application is chosen.
+  const appId = selected?.id ?? null;
+  const stageKey = selected ? `${selected.current_stage}|${selected.stage_entered_at ?? ""}|${selected.status}` : "";
   useEffect(() => {
-    setDocs(null);
-    setHistory(null);
+    if (shownId.current !== appId) {
+      shownId.current = appId;
+      setDocs(null);
+      setHistory(null);
+    }
     setHistoryError(null);
-    if (!selected) return;
-    ep.listDocuments(selected.id).then(setDocs, setError);
-    ep.getApplicationHistory(selected.id).then((h) => setHistory(h.history), setHistoryError);
-  }, [selected]);
+    if (!appId) return;
+    ep.listDocuments(appId).then(setDocs, setError);
+    ep.getApplicationHistory(appId).then((h) => setHistory(h.history), setHistoryError);
+  }, [appId, stageKey]);
 
   const loadNotes = useCallback(() => {
     ep.listNotifications().then((r) => setNotes(r.notifications), setError);
   }, []);
   useEffect(loadNotes, [loadNotes]);
+
+  // Keep the page current while it is open: every 30 s while visible, and on return to the tab.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState !== "visible") return;
+      void reload();
+      loadNotes();
+    };
+    const timer = window.setInterval(refresh, REFRESH_MS);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [reload, loadNotes]);
   useEffect(() => {
     // The Contact card only; a failure hides the consent line.
     ep.getConsents().then(setConsents, () => setConsents(null));
@@ -129,7 +157,8 @@ export default function DashboardScreen() {
   };
 
   const uploaded = docs ? docs.slots.filter((s) => s.state !== "MISSING").length : 0;
-  const needsAction = docs ? docs.slots.filter((s) => s.state === "QUALITY_REJECTED" || s.state === "FAILED").length : 0;
+  // Only a file unusable as a file needs the applicant; a scan that read little or nothing goes to an officer.
+  const needsAction = docs ? docs.slots.filter((s) => s.state === "QUALITY_REJECTED").length : 0;
   const unread = notes?.filter((n) => !n.read_at).length ?? 0;
   const appNotes = notes?.filter((n) => !selected || !n.application_id || n.application_id === selected.id) ?? [];
 

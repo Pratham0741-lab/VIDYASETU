@@ -26,18 +26,24 @@ const done = (
 describe('slotResult: one row of the applicant checklist', () => {
   const slot = 'Family Income Certificate';
 
-  it('no document / quality rejected / unreadable / still scanning', () => {
+  it('no document / unusable file / not read / still scanning', () => {
     expect(slotResult(slot, null)).toEqual({ outcome: 'MISSING', reasons: [] });
+    // Only a file unusable as a file (blank, corrupt) asks the applicant to upload again.
     expect(
       slotResult(slot, {
         state: 'QUALITY_REJECTED',
-        quality: { issues: ['blurred'] },
+        quality: { issues: ['blank_page'] },
         extraction: null,
       }),
-    ).toEqual({ outcome: 'NEEDS_ATTENTION', reasons: [{ code: 'quality', issues: ['blurred'] }] });
-    expect(slotResult(slot, { state: 'FAILED', quality: null, extraction: null }).reasons).toEqual([
-      { code: 'unreadable' },
-    ]);
+    ).toEqual({
+      outcome: 'NEEDS_ATTENTION',
+      reasons: [{ code: 'unreadable' }, { code: 'quality', issues: ['blank_page'] }],
+    });
+    // The pipeline gave up: received, an officer reads it.
+    expect(slotResult(slot, { state: 'FAILED', quality: null, extraction: null })).toEqual({
+      outcome: 'RECEIVED_MANUAL',
+      reasons: [{ code: 'not_read' }],
+    });
     expect(slotResult(slot, { state: 'PROCESSING', quality: null, extraction: null }).outcome).toBe(
       'SCANNING',
     );
@@ -48,7 +54,41 @@ describe('slotResult: one row of the applicant checklist', () => {
     expect(slotResult(slot, done({ review_status: 'OFFICER_CONFIRMED' })).outcome).toBe('VERIFIED');
   });
 
-  it('names why a document needs attention', () => {
+  it('nothing read: received, an officer checks it by hand', () => {
+    const blank = done({
+      review_status: 'NEEDS_REVIEW',
+      fields: [
+        { name: 'family_income_annual', value: null, review: 'NEEDS_REVIEW' },
+        { name: 'issued_date', value: null, review: 'NEEDS_REVIEW' },
+      ],
+    });
+    expect(slotResult(slot, blank)).toEqual({
+      outcome: 'RECEIVED_MANUAL',
+      reasons: [{ code: 'not_read' }],
+      review_fields: ['family_income_annual', 'issued_date'],
+    });
+  });
+
+  it('partly read: received, officer verifies the missing and uncertain fields', () => {
+    const partial = done({
+      review_status: 'NEEDS_REVIEW',
+      fields: [
+        { name: 'applicant_name', value: 'Sonal Kumari', review: 'AUTO_ACCEPTED' },
+        { name: 'certificate_number', value: null, review: 'NEEDS_REVIEW' },
+        { name: 'family_income_annual', value: 120000, review: 'NEEDS_REVIEW' },
+      ],
+    });
+    expect(slotResult(slot, partial)).toEqual({
+      outcome: 'RECEIVED_REVIEW',
+      reasons: [
+        { code: 'missing_fields', fields: ['certificate_number'] },
+        { code: 'low_confidence', fields: ['family_income_annual'] },
+      ],
+      review_fields: ['certificate_number', 'family_income_annual'],
+    });
+  });
+
+  it('names why a document is left to an officer', () => {
     const low = done({
       review_status: 'NEEDS_REVIEW',
       fields: [
@@ -56,6 +96,7 @@ describe('slotResult: one row of the applicant checklist', () => {
         { name: 'issued_date', review: 'NEEDS_REVIEW' },
       ],
     });
+    expect(slotResult(slot, low).outcome).toBe('RECEIVED_REVIEW');
     expect(slotResult(slot, low).reasons).toEqual([
       { code: 'low_confidence', fields: ['issued_date'] },
     ]);
@@ -92,6 +133,13 @@ describe('slotResult: one row of the applicant checklist', () => {
     expect(slotResult(slot, unknownType, true)).toEqual({ outcome: 'VERIFIED', reasons: [] });
     expect(
       slotResult(slot, { state: 'FAILED', quality: null, extraction: null }, true).outcome,
+    ).toBe('VERIFIED');
+    expect(
+      slotResult(
+        slot,
+        { state: 'QUALITY_REJECTED', quality: { issues: ['blank_page'] }, extraction: null },
+        true,
+      ).outcome,
     ).toBe('NEEDS_ATTENTION');
     expect(officerAccepted('MINISTRY_APPROVED')).toBe(true);
     expect(officerAccepted('INO_VERIFIED')).toBe(false);
@@ -103,8 +151,9 @@ describe('slotResult: one row of the applicant checklist', () => {
       ],
     });
     expect(slotResult(slot, mismatch)).toEqual({
-      outcome: 'NEEDS_ATTENTION',
+      outcome: 'RECEIVED_REVIEW',
       reasons: [{ code: 'profile_mismatch', fields: ['family_income_annual'] }],
+      review_fields: ['family_income_annual'],
     });
   });
 });
@@ -155,6 +204,37 @@ describe('readiness: may the application move on?', () => {
       ready: true,
       verified: false,
       attention_slots: ['Family Income Certificate'],
+    });
+  });
+
+  it('documents left to an officer never hold the application: flagged for scrutiny', () => {
+    const r = readiness(
+      checklist,
+      {
+        'Family Income Certificate': {
+          outcome: 'RECEIVED_REVIEW',
+          reasons: [{ code: 'missing_fields', fields: ['certificate_number'] }],
+          review_fields: ['certificate_number'],
+        },
+        'Disability certificate (if applicable)': {
+          outcome: 'RECEIVED_MANUAL',
+          reasons: [{ code: 'not_read' }],
+        },
+      },
+      { ...at, 'Disability certificate (if applicable)': null },
+      noCheck,
+      now,
+    );
+    expect(r).toMatchObject({
+      pending_slots: [],
+      attention_slots: [],
+      officer_review_slots: ['Family Income Certificate', 'Disability certificate (if applicable)'],
+      review_fields: {
+        'Family Income Certificate': ['certificate_number'],
+        'Disability certificate (if applicable)': [],
+      },
+      ready: true,
+      verified: false,
     });
   });
 

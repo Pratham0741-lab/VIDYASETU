@@ -31,6 +31,12 @@ RUN sh /tmp/security-tools/pip_audit.sh /app/security \
  && python /tmp/security-tools/licences.py /app/security \
  && rm -rf /tmp/security-tools
 
+# OCR models (PP-OCRv5 mobile detection + English recognition), fetched
+# ONCE at build time into a read-only path. The running service never downloads
+# (DISABLE_MODEL_SOURCE_CHECK) and has no internet access anyway.
+ENV PADDLE_PDX_CACHE_HOME=/opt/paddlex     DISABLE_MODEL_SOURCE_CHECK=True     OMP_NUM_THREADS=4
+RUN python -c "from paddleocr import PaddleOCR; PaddleOCR(text_detection_model_name='PP-OCRv5_mobile_det', text_recognition_model_name='en_PP-OCRv5_mobile_rec', use_doc_orientation_classify=False, use_doc_unwarping=False, use_textline_orientation=False)"  && chmod -R a+rX /opt/paddlex
+
 # Copy application and model files
 COPY app ./app
 # Offline model assets at the path docker-compose.yml sets as ML_MODELS_DIR.

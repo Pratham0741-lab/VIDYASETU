@@ -60,7 +60,7 @@ class ExtractResponse(BaseModel):
 
 
 @router.post("/extract", response_model=ExtractResponse)
-async def extract_fields_endpoint(payload: ExtractRequest):
+def extract_fields_endpoint(payload: ExtractRequest):
     """
     Extracts structured fields from a document image based on its document type.
     Returns per-field values and per-field confidence scores.

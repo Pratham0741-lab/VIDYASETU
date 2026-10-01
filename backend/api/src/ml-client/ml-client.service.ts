@@ -48,6 +48,9 @@ type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
  * or MockMlService - is decided in exactly one place, the provider factory in
  * ml-client.module.ts, from ML_MODE.
  */
+/** Extraction's own ceiling: the ml time budget plus the pass in flight. */
+const EXTRACT_TIMEOUT_MS = 45_000;
+
 @Injectable()
 export class MlClientService {
   private readonly baseUrl: string;
@@ -75,10 +78,15 @@ export class MlClientService {
 
   /** documentType: a canonical type, or null to let the ml service classify. */
   extractFields(image: Buffer, documentType: string | null): Promise<ExtractionResult> {
-    return this.document('extract', {
-      image_base64: image.toString('base64'),
-      ...(documentType === null ? {} : { document_type: documentType }),
-    });
+    // Best-effort OCR runs several preprocessing passes (ml: ocr_time_budget_s = 20 s).
+    return this.document(
+      'extract',
+      {
+        image_base64: image.toString('base64'),
+        ...(documentType === null ? {} : { document_type: documentType }),
+      },
+      Math.max(this.defaultTimeoutMs, EXTRACT_TIMEOUT_MS),
+    );
   }
 
   checkConsistency(extractions: Record<string, unknown>[]): Promise<ConsistencyResult> {
@@ -110,6 +118,7 @@ export class MlClientService {
   private async document<K extends keyof typeof ML_DOCUMENT_PATHS>(
     kind: K,
     body: unknown,
+    timeoutMs?: number,
   ): Promise<
     K extends 'quality'
       ? QualityResult
@@ -121,7 +130,10 @@ export class MlClientService {
             ? CropResult
             : ConsistencyResult
   > {
-    const result = await this.request<unknown>('POST', ML_DOCUMENT_PATHS[kind], { body });
+    const result = await this.request<unknown>('POST', ML_DOCUMENT_PATHS[kind], {
+      body,
+      ...(timeoutMs === undefined ? {} : { timeoutMs }),
+    });
     if (!RESPONSE_SHAPES[kind](result)) {
       this.logger.warn({ path: ML_DOCUMENT_PATHS[kind] }, 'ml returned a malformed response');
       throw new AppError(ErrorCode.DEPENDENCY_UNAVAILABLE, {

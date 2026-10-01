@@ -46,7 +46,9 @@ def test_the_generated_pdf_rasterises_to_the_rendered_page():
 
     image, info = rasterise_first_page(pdf)
     expected, _ = render_document_layout(CERT)
-    assert image.shape == expected.shape  # same pixel grid at the same dpi
+    # Same pixel grid at the same dpi (PDFium rounds the page size up: +-1 px at 300 dpi).
+    assert image.shape[2] == expected.shape[2]
+    assert all(abs(a - b) <= 1 for a, b in zip(image.shape[:2], expected.shape[:2]))
     assert info == {"page_count": 1, "page_used": 1, "page_size_pt": info["page_size_pt"], "dpi": PDF_RASTER_DPI}
 
 
@@ -98,7 +100,7 @@ async def test_multi_page_pdf_reads_page_one_only():
 async def test_unusable_pdfs_fail_cleanly(label, data, issue):
     q = await post("quality", {"image_base64": B64(data)})
     assert q.status_code == 200, (label, q.text)
-    assert q.json()["value"] == {"usable": False, "issues": [issue]}, label
+    assert q.json()["value"] == {"usable": False, "issues": [issue], "warnings": []}, label
     for path, body in [("classify", {}), ("extract", {"document_type": "INCOME_CERTIFICATE"}), ("crop", {"x": 1, "y": 1, "width": 5, "height": 5})]:
         r = await post(path, {"image_base64": B64(data), **body})
         assert r.status_code == 422, (label, path, r.status_code, r.text)
@@ -110,7 +112,8 @@ def test_a_normal_blank_handmade_pdf_is_readable():
 
     image, info = rasterise_first_page(handmade_pdf())
     assert info["page_size_pt"] == [595.0, 842.0]
-    assert image.shape[:2] == (round(842 * PDF_RASTER_DPI / 72), round(595 * PDF_RASTER_DPI / 72))
+    want = (842 * PDF_RASTER_DPI / 72, 595 * PDF_RASTER_DPI / 72)
+    assert all(abs(a - b) <= 1 for a, b in zip(image.shape[:2], want))
 
 
 @pytest.mark.asyncio

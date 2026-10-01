@@ -18,6 +18,9 @@ dependencies = [
     # Phase 13E: PDF page rasterisation (bundled PDFium; installed at build time, no runtime network).
     "pypdfium2>=4.30.0",
     "httpx>=0.27.0",
+    # Primary OCR engine (PP-OCRv5 mobile models, baked into the image at build time).
+    "paddlepaddle==3.2.2",
+    "paddleocr==3.3.3",
 ]
 
 [project.optional-dependencies]
